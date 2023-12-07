@@ -1,7 +1,5 @@
 /.vscode
-/mp32diaptyxx.h
+*.h
 /reg
-/reg.zip
-/XY2器件描述文件 temp.xlsx
-/XY2器件描述文件.xlsx
-/~$XY2器件描述文件.xlsx
+*.zip
+*.xlsx
