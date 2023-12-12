@@ -20,6 +20,7 @@ from sys import flags
 from openpyxl import load_workbook
 from openpyxl.worksheet import worksheet
 from openpyxl.styles import colors, Border, Side, Font, Color
+import json
 
 
 # import xlrd
@@ -66,29 +67,29 @@ class St_CPU:
         self.revision = ''
         self.derivedFrom = ''
         self.endian = 'little'
-        self.srs = False
-        self.mpu = False
-        self.fpu = False
-        self.dsp = False
-        self.icache = False
-        self.dicache = False
+        self.srsPresent = False
+        self.mpuPresent = False
+        self.fpuPresent = False
+        self.dspPresent = False
+        self.icachePresent = False
+        self.dcachePresent = False
         self.mmu = False
-        self.itcm = False
-        self.dicm = False
-        self.l2cache = False
+        self.itcmPresent = False
+        self.dtcmPresent = False
+        self.l2cachePresent = False
 
     def get_inst_str(self):
-        return f'name:{self.name},derivedFrom:{self.derivedFrom},revision:{self.revision},endian:{self.endian},srs:{self.srs},mpu:{self.mpu},fpu:{self.fpu},dsp:{self.dsp},icache:{self.icache},dcache:{self.dicache},itcm:{self.itcm},dtcm:{self.dicm},l2cache:{self.l2cache}'
+        return f'name:{self.name},derivedFrom:{self.derivedFrom},revision:{self.revision},endian:{self.endian},srs:{self.srsPresent},mpu:{self.mpuPresent},fpu:{self.fpuPresent},dsp:{self.dspPresent},icache:{self.icachePresent},dcache:{self.dcachePresent},itcm:{self.itcmPresent},dtcm:{self.dtcmPresent},l2cache:{self.l2cachePresent}'
 
 
 class St_Interrupt:
     def __init__(self, name):
         self.name = name
         self.value = 0
-        self.desc = ''
+        self.description = ''
 
     def get_inst_str(self):
-        return f'Interrupt:  name:{self.name},value:{self.value},desc:{self.desc}'
+        return f'Interrupt:  name:{self.name},value:{self.value},desc:{self.description}'
 
 
 class St_AddressBlock:
@@ -105,16 +106,16 @@ class St_Memory:
     def __init__(self, name):
         self.name = name
         self.derivedFrom = ''
-        self.addrBase = 0
-        self.addrOffset = 0
+        self.baseAddress = 0
+        self.addressOffset = 0
         self.size = 0
         self.access = ''
         self.usage = ''
         self.processor = ''
-        self.desc = ''
+        self.description = ''
 
     def get_inst_str(self):
-        return f'Memory:  name:{self.name},derivedFrom:{self.derivedFrom},addrBase:{self.addrBase},addrOffset:{self.addrOffset},size:{self.size},access:{self.access},usage:{self.usage},proc:{self.processor},desc:{self.desc}'
+        return f'Memory:  name:{self.name},derivedFrom:{self.derivedFrom},addrBase:{self.baseAddress},addrOffset:{self.addressOffset},size:{self.size},access:{self.access},usage:{self.usage},proc:{self.processor},desc:{self.description}'
 
 
 class St_Enum_Val:
@@ -128,14 +129,14 @@ class St_Enum_Val:
 
 
 class St_Field:
-    def __init__(self, name):
+    def __init__(self, name:str):
         self.name = name
-        self.desc = ''
-        self.offset = 0
+        self.description = ''
+        self.bitOffset = 0
         self.bitWidth = 1
         self.access = 'RW'
-        self.defaultVal = 0
-        self.enumVals = []
+        self.defaultValue = 0
+        self.enumValues = []
         self.writeConstraint = ''  # enum or range
         self.range_min = None
         self.range_max = None
@@ -143,69 +144,69 @@ class St_Field:
 
     def get_inst_str(self):
         inst_str = 'Field:\n'
-        inst_str += f'\tname:{self.name},desc:{self.desc},offset:{self.offset},bitWid:{self.bitWidth},access:{
-            self.access},defaultVal:{self.defaultVal},writeConst:{self.writeConstraint},range:[{self.range_min}:{self.range_max}]'
-        if self.enumVals:
+        inst_str += f'\tname:{self.name},desc:{self.description},offset:{self.bitOffset},bitWid:{self.bitWidth},access:{
+            self.access},defaultVal:{self.defaultValue},writeConst:{self.writeConstraint},range:[{self.range_min}:{self.range_max}]'
+        if self.enumValues:
             inst_str += '\n\tenum: \n'
-            for e in self.enumVals:
+            for e in self.enumValues:
                 inst_str += '\t'+e.get_inst_str()+'\n'
         return inst_str
 
 
 class St_Register:
-    def __init__(self, name, access, size=32):
+    def __init__(self, name:str, access:str, size=32):
         self.name = name
         self.dim = 0
         self.dimIncrement = 0
         self.dimName = ''
-        self.desc = ''
-        self.cRegName = ''
-        self.alterReg = ''   # 别名，
-        self.alterGroupName = ''
+        self.description = ''
+        self.headRegisterName = ''
+        self.alternateRegister = ''   # 别名，
+        self.alternateGroupName = ''
         self.addressOffset = ''
         self.size = size
         self.access = access
         self.resetValue = ''
         self.resetMask = ''
         self.dataType = 'uint32_t'
-        self.fd_lst = []
+        self.fields = []
         self.hdl_path = ''
 
     def getRegName(self):
         cRegName = self.name
-        if self.cRegName:
-            cRegName = self.cRegName
+        if self.headRegisterName:
+            cRegName = self.headRegisterName
         return cRegName
 
     def get_inst_str(self):
         inst_str = 'Register:\n'
-        inst_str += f'name:{self.name},dim:{self.dim},dimIncr:{self.dimIncrement},desc:{self.desc},cRegNmae:{self.cRegName},alterReg:{
-            self.alterReg},alterGroup:{self.alterGroupName},offset:{self.addressOffset},size:{self.size},access:{self.access}\n'
-        for e in self.fd_lst:
+        inst_str += f'name:{self.name},dim:{self.dim},dimIncr:{self.dimIncrement},desc:{self.description},cRegNmae:{self.headRegisterName},alterReg:{
+            self.alternateRegister},alterGroup:{self.alternateGroupName},offset:{self.addressOffset},size:{self.size},access:{self.access}\n'
+        for e in self.fields:
             inst_str += '\t'+e.get_inst_str()+'\n'
         return inst_str
 
 
 class St_Cluster:
-    def __init__(self, name):
+    def __init__(self, name:str):
         self.name = name
         self.dim = 0
         self.dimIncrement = 0
         self.dimName = ''
-        self.desc = ''
+        self.description = ''
         self.addressOffset = ''
-        self.alterCluster = ''   # 别名，
-        self.alterGroupName = ''
-        self.cStructName = ''
-        self.chd_clust_reg_list = []  # 子cluster或者register
+        self.alternateCluster = ''   # 别名，
+        self.alternateGroupName = ''
+        self.headerStructName = ''
+        self.clusters = []  # 子cluster或者register
         self.rowStart = 0
         self.rowEnd = 0
 
     def get_inst_str(self):
         inst_str = 'Cluster:\n'
-        inst_str += f'name:{self.name},dim:{self.dim},dimIncr:{self.dimIncrement},desc:{self.desc},addrOffser:{
-            self.addressOffset},alter:{self.alterCluster},alterGroupName:{self.alterGroupName},cStructName:{self.cStructName}\n'
-        for e in self.chd_clust_reg_list:
+        inst_str += f'name:{self.name},dim:{self.dim},dimIncr:{self.dimIncrement},desc:{self.description},addrOffser:{
+            self.addressOffset},alter:{self.alternateCluster},alterGroupName:{self.alternateGroupName},cStructName:{self.headerStructName}\n'
+        for e in self.clusters:
             inst_str += '\t'+e.get_inst_str()+'\n'
         return inst_str
 
@@ -215,35 +216,35 @@ class St_Peripheral:
         self.name = name
         self.derivedFrom = ''
         self.processor = ''
-        self.alias = ''
-        self.prefix = ''
-        self.suffix = ''
+        self.aliasPeripheral = ''
+        self.prefixToName = ''
+        self.suffixToName = ''
         self.moduleName = ''
-        self.inst_Name = ''
-        self.desc = ''
+        self.InstanceName = ''
+        self.description = ''
         self.busInterface = ''
-        self.cStructName = ''
-        self.baseAddr = ''
+        self.headerStructName = ''
+        self.baseAddress = ''
         self.addrDerivedFrom = ''
         self.offset = ''
         self.addrBlocksRowindex = 0
-        self.addrBlocks = []
+        self.addressBlocks = []
         self.interuptsRowindex = 0
-        self.interupts = []
+        self.interrupts = []
         self.clust_reg_lst = []  # cluster or register
 
     def get_inst_str(self):
         inst_str = 'Peripheral: \n'
-        inst_str += f'name:{self.name}, derivedFrom:{self.derivedFrom},proc:{self.processor},alias:{self.alias},moduleName:{self.moduleName},instName:{self.inst_Name},hStructName:{
-            self.cStructName},prefix:{self.prefix},suffix:{self.suffix},addrBlocks:{self.addrBlocksRowindex},interupt:{self.interuptsRowindex},desc:{self.desc}\n'
-        for adb in self.addrBlocks:
+        inst_str += f'name:{self.name}, derivedFrom:{self.derivedFrom},proc:{self.processor},alias:{self.aliasPeripheral},moduleName:{self.moduleName},instName:{self.InstanceName},hStructName:{
+            self.headerStructName},prefix:{self.prefixToName},suffix:{self.suffixToName},addrBlocks:{self.addrBlocksRowindex},interupt:{self.interuptsRowindex},desc:{self.description}\n'
+        for adb in self.addressBlocks:
             inst_str += '\t'+adb.get_inst_str()+'\n'
-        for interu in self.interupts:
+        for interu in self.interrupts:
             inst_str += '\t'+interu.get_inst_str()+'\n'
         return inst_str
     
     def getAddrStr(self):
-        addr_str = self.baseAddr
+        addr_str = self.baseAddress
         if self.addrDerivedFrom and self.offset:
             addr_str = self.addrDerivedFrom + ' + '+ self.offset
         return addr_str
@@ -255,7 +256,7 @@ class St_Device:
         self.vendor = ''
         self.version = ''
         self.series = ''
-        self.desc = ''
+        self.description = ''
         self.cpus = []
         self.width = 32
         self.memories = []
@@ -265,7 +266,7 @@ class St_Device:
     def get_inst_str(self):
         inst_str = 'Device: \n'
         inst_str += f'name:{self.name}, vendor:{self.vendor}, version:{
-            self.version}, series:{self.series}, desc: {self.desc}\n'
+            self.version}, series:{self.series}, desc: {self.description}\n'
         for cpu in self.cpus:
             inst_str += '\t'+cpu.get_inst_str()+'\n'
         for mem in self.memories:
@@ -412,7 +413,7 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
                         if perip.name == derivedFrom:
                             st_perip = copy.copy(perip)
                             break
-            st_perip.alias = alias
+            st_perip.aliasPeripheral = alias
             st_perip.derivedFrom = derivedFrom
             st_perip.name = name
 
@@ -421,7 +422,7 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
                 st_perip.addrDerivedFrom = addrDFrom
             baseAddr = ws.cell(row, 4).value
             if baseAddr:
-                st_perip.baseAddr = baseAddr
+                st_perip.baseAddress = baseAddr
             offset = ws.cell(row,5).value
             if offset:
                 st_perip.offset = offset
@@ -439,7 +440,7 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
                 st_perip.moduleName = mod_name
             inst_Name = ws.cell(row, 9).value
             if inst_Name:
-                st_perip.inst_Name = inst_Name
+                st_perip.InstanceName = inst_Name
             busInf = ws.cell(row,10).value
             if busInf:
                 st_perip.busInterface = busInf
@@ -452,7 +453,7 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
                 markCell_InvalidFunc2(ws, row, 8)
                 bMod_CheckErr = True
             if mod_inst_structName:
-                st_perip.cStructName = struct_name
+                st_perip.headerStructName = struct_name
 
             mod_inst_prefix = ws.cell(row, 12).value
             if index == 0 and mod_inst_prefix:
@@ -462,7 +463,7 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
                 markCell_InvalidFunc2(ws, row, 12)
                 bMod_CheckErr = True
             if prefix_str:
-                st_perip.prefix = prefix_str
+                st_perip.prefixToName = prefix_str
 
             mod_inst_suffix = ws.cell(row, 13).value
             if index == 0 and mod_inst_suffix:
@@ -472,10 +473,10 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
                 markCell_InvalidFunc2(ws, row, 13)
                 bMod_CheckErr = True
             if suffix_str:
-                st_perip.suffix = suffix_str
+                st_perip.suffixToName = suffix_str
             desc = ws.cell(row, 16).value
             if desc:
-                st_perip.desc = desc
+                st_perip.description = desc
             addri = ws.cell(row, 14).value
             if addri:
                 bIn = False
@@ -567,7 +568,7 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
                     desc = ws.cell(row, itq_col_dict['description']).value
                     st_inter = St_Interrupt(name)
                     st_inter.value = val
-                    st_inter.desc = desc
+                    st_inter.description = desc
                     interu_lst.append(st_inter)
                     interupts_set.add(st_inter)
                 row += 1
@@ -577,9 +578,9 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
         for p in perip_list:
             if isinstance(p, St_Peripheral):
                 if p.addrBlocksRowindex in addrb_dict:
-                    p.addrBlocks = addrb_dict[p.addrBlocksRowindex]
+                    p.addressBlocks = addrb_dict[p.addrBlocksRowindex]
                 if p.interuptsRowindex in interu_dict:
-                    p.interupts = interu_dict[p.interuptsRowindex]
+                    p.interrupts = interu_dict[p.interuptsRowindex]
                 # print(p.get_inst_str())
 
     cluster_lst = flag_dict['cluster:']
@@ -716,9 +717,9 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                     addrOffset = int(offset[2:], 16)
                     cur_st_reg.resetValue = ws.cell(row, reg_col_dict['resetValue']).value
                     cur_st_reg.resetMask = ws.cell(row, reg_col_dict['resetMask']).value
-                    cur_st_reg.cRegName = ws.cell(row, reg_col_dict['headRegisterName']).value
-                    cur_st_reg.alterReg = ws.cell(row, reg_col_dict['alternateRegister']).value
-                    cur_st_reg.alterGroupName = ws.cell(row, reg_col_dict['alternateGroupName']).value
+                    cur_st_reg.headRegisterName = ws.cell(row, reg_col_dict['headRegisterName']).value
+                    cur_st_reg.alternateRegister = ws.cell(row, reg_col_dict['alternateRegister']).value
+                    cur_st_reg.alternateGroupName = ws.cell(row, reg_col_dict['alternateGroupName']).value
                     cur_st_reg.dim = ws.cell(row, reg_col_dict['dim']).value
                     dimIncrement = ws.cell(row, reg_col_dict['dimIncrement']).value
                     if isinstance(dimIncrement,str):
@@ -727,7 +728,7 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                     cur_st_reg.dimName = ws.cell(row, reg_col_dict['dimName']).value
                     desc = ws.cell(row, reg_col_dict['description']).value
                     if desc:
-                        cur_st_reg.desc = desc
+                        cur_st_reg.description = desc
                     hdl_path = ws.cell(row, reg_col_dict['pathHDL']).value
                     if hdl_path:
                         cur_st_reg.hdl_path = hdl_path
@@ -750,7 +751,7 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                     continue
                 bSameFieldAsPrev = False
                 if name and name.upper() != 'RESERVED':
-                    for f in cur_st_reg.fd_lst:
+                    for f in cur_st_reg.fields:
                         if f.name == name:
                             if f == cur_reg_fd:
                                 bSameFieldAsPrev = True
@@ -777,32 +778,32 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                     enumDesc = ws.cell(row, regFd_col_dict['enumDescription']).value
                     desc = ws.cell(row, regFd_col_dict['description']).value
                     hdl_path =ws.cell(row,regFd_col_dict['pathHDL']).value
-                    fd.offset = offset
+                    fd.bitOffset = offset
                     fd.bitWidth = bitWidth
                     fd.access = access
-                    fd.defaultVal = defaultVal
+                    fd.defaultValue = defaultVal
                     fd.writeConstraint = writeConstraint
                     fd.range_min = range_min
                     fd.range_max = range_max
                     if hdl_path:
                         fd.hdl_path = hdl_path
                     if desc:
-                        fd.desc = desc
+                        fd.description = desc
                     if enumName and enumVal:
                         enum_item = St_Enum_Val(enumName, enumVal)
                         enum_item.desc = enumDesc
-                        fd.enumVals.append(enum_item)
+                        fd.enumValues.append(enum_item)
                     # 这里可能需要添加按顺序插入动作
                     binsertFd = False
-                    if cur_st_reg.fd_lst:
-                        fd_len=len(cur_st_reg.fd_lst)
+                    if cur_st_reg.fields:
+                        fd_len=len(cur_st_reg.fields)
                         for i in range(fd_len):
-                            if cur_st_reg.fd_lst[i].offset> fd.offset:
-                                cur_st_reg.fd_lst.insert(i,fd)
+                            if cur_st_reg.fields[i].bitOffset > fd.bitOffset:
+                                cur_st_reg.fields.insert(i,fd)
                                 binsertFd = True
                                 break
                     if not binsertFd:
-                        cur_st_reg.fd_lst.append(fd)
+                        cur_st_reg.fields.append(fd)
                 else:
                     enumName = ws.cell(row, regFd_col_dict['enumName']).value
                     enumVal = ws.cell(row, regFd_col_dict['enumValue']).value
@@ -818,7 +819,7 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                     if enumName and enumVal:
                         enum_item = St_Enum_Val(enumName, enumVal)
                         enum_item.desc = enumDesc
-                        cur_reg_fd.enumVals.append(enum_item)
+                        cur_reg_fd.enumValues.append(enum_item)
 
         row += 1
     return parent_clu_reg_list, row, bError
@@ -848,16 +849,16 @@ def readCluster(ws: worksheet, parent_clu_reg_list, clu_range: St_ClusterInnerRa
             if st_clu:
                 for c_r in clu_range_list:
                     if c_r.rowStart == row:
-                        st_clu.chd_clust_reg_list, row, bError = readCluster(
-                            ws, st_clu.chd_clust_reg_list, c_r, clu_range_list)
+                        st_clu.clusters, row, bError = readCluster(
+                            ws, st_clu.clusters, c_r, clu_range_list)
                         break
             else:
                 row += 2
             continue
         elif name == 'register:':
             if st_clu:
-                st_clu.chd_clust_reg_list, row ,bError= readRegister(
-                    ws, clu_end, row, st_clu.chd_clust_reg_list)
+                st_clu.clusters, row ,bError= readRegister(
+                    ws, clu_end, row, st_clu.clusters)
             else:
                 row += 2
             continue
@@ -870,12 +871,12 @@ def readCluster(ws: worksheet, parent_clu_reg_list, clu_range: St_ClusterInnerRa
             st_clu.rowEnd = clu_end
             st_clu.addressOffset = ws.cell(row, cluster_col_dict['addressOffset']).value
             addrOffset = int(st_clu.addressOffset[2:], 16)
-            st_clu.alterCluster = ws.cell(row, cluster_col_dict['alternateCluster']).value
-            st_clu.alterGroupName = ws.cell(row, cluster_col_dict['alternateGroupName']).value
-            st_clu.cStructName = ws.cell(row, cluster_col_dict['headerStructName']).value
+            st_clu.alternateCluster = ws.cell(row, cluster_col_dict['alternateCluster']).value
+            st_clu.alternateGroupName = ws.cell(row, cluster_col_dict['alternateGroupName']).value
+            st_clu.headerStructName = ws.cell(row, cluster_col_dict['headerStructName']).value
             st_clu.dim = ws.cell(row, cluster_col_dict['dim']).value
             st_clu.dimIncrement = ws.cell(row, cluster_col_dict['dimIncrement']).value
-            st_clu.desc = ws.cell(row, cluster_col_dict['description']).value
+            st_clu.description = ws.cell(row, cluster_col_dict['description']).value
             if parent_clu_reg_list:
                 i = 0
                 for clu_reg in parent_clu_reg_list:
@@ -1096,9 +1097,9 @@ extern "C"
                     emIr += ','
                 else:
                     emIr += ' '
-                emIr += cst_tab_str+f'/*!< {ir.desc} */\n'
+                emIr += cst_tab_str+f'/*!< {ir.description} */\n'
                 irq_str += emIr
-                irq_num_str += f'#define {ir.name}_NUM'.ljust(cst_IRQ_SpaceSize)  +f'{ir.value}       /*!< {ir.desc}       */\n'
+                irq_num_str += f'#define {ir.name}_NUM'.ljust(cst_IRQ_SpaceSize)  +f'{ir.value}       /*!< {ir.description}       */\n'
         if irq_str:
             fileHeader += 'typedef enum __IRQ_NUMBER\n{\n'   
             fileHeader += irq_str
@@ -1165,37 +1166,42 @@ typedef void (*irqFnHandler)(void *);
                     cp_str += '0x'+rev_str_0+rev_str_1+"U   /*!< Defines processorre's vision               */\n"
                     fileHeader += cp_str
             val_str = '0U'.ljust(cst_HEXValue_StringSize)
-            if cp.srs:
+            if cp.srsPresent:
                 val_str = '1U'.ljust(cst_HEXValue_StringSize)
             cp_str = f'#define __CORE_HAS_SRS'.ljust(cst_CORE_SpaceSize) + val_str + "/*!< Defines if the Shadow regiseters are present or not  */\n"
             fileHeader += cp_str
             val_str = '0U'.ljust(cst_HEXValue_StringSize)
-            if cp.mpu:
+            if cp.mpuPresent:
                 val_str = '1U'.ljust(cst_HEXValue_StringSize)
             cp_str = f'#define __CORE_HAS_MPU'.ljust(cst_CORE_SpaceSize) + val_str + "/*!< Defines if the MPU is present or not       */\n"
             fileHeader += cp_str
             val_str = '0U'.ljust(cst_HEXValue_StringSize)
-            if cp.fpu:
+            if cp.fpuPresent:
                 val_str = '1U'.ljust(cst_HEXValue_StringSize)
             cp_str = f'#define __CORE_HAS_FPU'.ljust(cst_CORE_SpaceSize) + val_str + "/*!< Defines if the FPU is present or not       */\n"
             fileHeader += cp_str
             val_str = '0U'.ljust(cst_HEXValue_StringSize)
-            if cp.dsp:
+            if cp.dspPresent:
                 val_str = '1U'.ljust(cst_HEXValue_StringSize)
             cp_str = f'#define __CORE_HAS_DSP'.ljust(cst_CORE_SpaceSize) + val_str + "/*!< Defines if the DSP is present or not       */\n"
             fileHeader += cp_str
             val_str = '0U'.ljust(cst_HEXValue_StringSize)
-            if cp.icache:
+            if cp.icachePresent:
                 val_str = '1U'.ljust(cst_HEXValue_StringSize)
             cp_str = f'#define __CORE_HAS_L1_ICACHE'.ljust(cst_CORE_SpaceSize) + val_str + "/*!< Defines if the L1 ICache is present or not */\n"
             fileHeader += cp_str
             val_str = '0U'.ljust(cst_HEXValue_StringSize)
-            if cp.dicache:
+            if cp.dcachePresent:
                 val_str = '1U'.ljust(cst_HEXValue_StringSize)
             cp_str = f'#define __CORE_HAS_L1_DCACHE'.ljust(cst_CORE_SpaceSize) + val_str + "/*!< Defines if the L1 DCache is present or not */\n"
             fileHeader += cp_str
             val_str = '0U'.ljust(cst_HEXValue_StringSize)
-            if cp.l2cache:
+            if cp.mmu:
+                val_str = '1U'.ljust(cst_HEXValue_StringSize)
+            cp_str = f'#define __CORE_HAS_MMU_TLB'.ljust(cst_CORE_SpaceSize) + val_str + "/*!< Defines if the MMU is present or not       */\n"
+            fileHeader += cp_str
+            val_str = '0U'.ljust(cst_HEXValue_StringSize)
+            if cp.l2cachePresent:
                 val_str = '1U'.ljust(cst_HEXValue_StringSize)
             cp_str = f'#define __CORE_HAS_L2_CACHE'.ljust(cst_CORE_SpaceSize) + val_str + "/*!< Defines if the L2 Cache is present or not  */\n"
             fileHeader += cp_str
@@ -1249,9 +1255,9 @@ typedef void (*irqFnHandler)(void *);
         mem_other_str = ''
         for mem in dev.memories:
             if mem.processor:
-                mem_str = f'#define {mem.name}'.ljust(cst_Mem_SpaceSize)+f'({mem.addrBase})'+cst_tab_str
-                if mem.desc:
-                    mem_str += f'/*!< Base address of :{mem.desc} - {mem.access} */\n'
+                mem_str = f'#define {mem.name}'.ljust(cst_Mem_SpaceSize)+f'({mem.baseAddress})'+cst_tab_str
+                if mem.description:
+                    mem_str += f'/*!< Base address of :{mem.description} - {mem.access} */\n'
                 else:
                     mem_str += '\n'
                 bInProcLst = False
@@ -1269,15 +1275,15 @@ typedef void (*irqFnHandler)(void *);
                     print(f'Error:  MEM {mem.name} processor {mem.processor} not in CPUS. ')
             else:
                 if mem.derivedFrom:
-                    mem_str = f'#define {mem.name}'.ljust(cst_Mem_SpaceSize)+f'({mem.derivedFrom} + {mem.addrOffset}U)'+cst_tab_str
-                    if mem.desc:
-                        mem_str += f'/*!< Base address of :{mem.desc} - {mem.access} */\n'
+                    mem_str = f'#define {mem.name}'.ljust(cst_Mem_SpaceSize)+f'({mem.derivedFrom} + {mem.addressOffset}U)'+cst_tab_str
+                    if mem.description:
+                        mem_str += f'/*!< Base address of :{mem.description} - {mem.access} */\n'
                     else:
                         mem_str += '\n'
                 else:
                     mem_str = f'#define {mem.name}'.ljust(cst_Mem_SpaceSize)+f'({mem.addrBase})'+cst_tab_str
-                    if mem.desc:
-                        mem_str += f'/*!< Base address of :{mem.desc} - {mem.access} */\n'
+                    if mem.description:
+                        mem_str += f'/*!< Base address of :{mem.description} - {mem.access} */\n'
                     else:
                         mem_str += '\n'
                 mem_other_str += mem_str
@@ -1415,31 +1421,32 @@ def output_C_moduleFile(preip_lst, preip_name, version):
     
     if preip_lst:
         preip_inst = preip_lst[0]
-        out_C_file_Name = preip_name.lower()+'_regs'
-        module_Name = preip_inst.cStructName.upper()
-        module_Header= module_Name+'_REGS'
-        preip_name = preip_name.upper()
-        out_file_name = out_C_file_Name+'.h'
-        out_file_Pathname = './reg/'+out_file_name
-        with open(out_file_Pathname, 'w+') as out_file:
-            fileHeader = f'/**\n * @file    {out_file_name}\n'
-            fileHeader += f' * @author  CIP Application Team\n * @brief   {preip_name} Register struct Header File.\n'
-            fileHeader += ' *          This file contains:\n *           - Data structures and the address mapping for\n'
-            fileHeader += f" *             {preip_name} peripherals\n *           - Including peripheral's registers declarations and bits\n"
-            fileHeader += '*             definition\n'
+        if isinstance(preip_inst,St_Peripheral):
+            out_C_file_Name = preip_name.lower()+'_regs'
+            module_Name = preip_inst.headerStructName.upper()
+            module_Header= module_Name+'_REGS'
+            preip_name = preip_name.upper()
+            out_file_name = out_C_file_Name+'.h'
+            out_file_Pathname = './reg/'+out_file_name
+            with open(out_file_Pathname, 'w+') as out_file:
+                fileHeader = f'/**\n * @file    {out_file_name}\n'
+                fileHeader += f' * @author  CIP Application Team\n * @brief   {preip_name} Register struct Header File.\n'
+                fileHeader += ' *          This file contains:\n *           - Data structures and the address mapping for\n'
+                fileHeader += f" *             {preip_name} peripherals\n *           - Including peripheral's registers declarations and bits\n"
+                fileHeader += '*             definition\n'
 
-            # 格式化成2016-03-20 11:45:39形式
-            today = date.today()
-            fileHeader += f' * @version {version} \n * @date    {today.strftime("%y-%m-%d")}\n'
+                # 格式化成2016-03-20 11:45:39形式
+                today = date.today()
+                fileHeader += f' * @version {version} \n * @date    {today.strftime("%y-%m-%d")}\n'
 
-            fileHeader += """
+                fileHeader += """
  *
   ******************************************************************************
  * @copyright
  *
 """
-            fileHeader += f' *  <h2><center>&copy; Copyright (c){today.year} CIP United Co.\n'
-            fileHeader += """
+                fileHeader += f' *  <h2><center>&copy; Copyright (c){today.year} CIP United Co.\n'
+                fileHeader += """
  * All rights reserved.</center></h2>
  *
  * 
@@ -1454,10 +1461,10 @@ def output_C_moduleFile(preip_lst, preip_name, version):
  */
 #pragma once
 """
-            fileHeader += f'#ifndef __{module_Header}_H\n'
-            fileHeader += f'#define __{module_Header}_H\n'
+                fileHeader += f'#ifndef __{module_Header}_H\n'
+                fileHeader += f'#define __{module_Header}_H\n'
 
-            fileHeader += """
+                fileHeader += """
 #include <stdint.h>
 
 #ifndef   __IO
@@ -1496,14 +1503,14 @@ def output_C_moduleFile(preip_lst, preip_name, version):
 
 """
             
-            #uint_str = 'uint32_t'
+                #uint_str = 'uint32_t'
 
-            clu_reg_str_info,fileRegFdOpstr,nLastOffset = getCluRegStructInfo(preip_inst.clust_reg_lst, module_Name,0)
-            fileHeader += clu_reg_str_info
+                clu_reg_str_info,fileRegFdOpstr,nLastOffset = getCluRegStructInfo(preip_inst.clust_reg_lst, module_Name,0)
+                fileHeader += clu_reg_str_info
 
-            fileHeader += '}'+f' {module_Name}_t;\n\n#pragma pack()\n'
-            
-            fileHeader += """
+                fileHeader += '}'+f' {module_Name}_t;\n\n#pragma pack()\n'
+                
+                fileHeader += """
 /**
  * @}
  */
@@ -1536,16 +1543,16 @@ def output_C_moduleFile(preip_lst, preip_name, version):
 """
 
             
-            perip_inst_lst=[]
-            for p in  preip_lst:
-                if not p.alias:
-                    perip_inst_lst.append(p)
-            
-            for p in perip_inst_lst:
-                inst_name=p.name.upper()
-                fileHeader+=f'#define  {inst_name}_BASE_ADDR          {inst_name}_BASE\n'
+                perip_inst_lst=[]
+                for p in  preip_lst:
+                    if not p.aliasPeripheral:
+                        perip_inst_lst.append(p)
+                
+                for p in perip_inst_lst:
+                    inst_name=p.name.upper()
+                    fileHeader+=f'#define  {inst_name}_BASE_ADDR          {inst_name}_BASE\n'
 
-            fileHeader+="""
+                fileHeader+="""
 /**
  * @}
  */
@@ -1562,11 +1569,11 @@ def output_C_moduleFile(preip_lst, preip_name, version):
 
 """
             
-            for p in perip_inst_lst:
-                inst_name=p.name.upper()
-                fileHeader+=f'#define  {inst_name}      ( ({module_Name}_t*) {inst_name}_BASE_ADDR )\n'
+                for p in perip_inst_lst:
+                    inst_name=p.name.upper()
+                    fileHeader+=f'#define  {inst_name}      ( ({module_Name}_t*) {inst_name}_BASE_ADDR )\n'
 
-            fileHeader += """
+                fileHeader += """
 /**
  * @}
  */
@@ -1585,16 +1592,16 @@ def output_C_moduleFile(preip_lst, preip_name, version):
 /* ----------------------------------------------------------------------------
 """
 
-            mod_reg_str = f' * --     {module_Name}  register bit description\n'
-            fileHeader += mod_reg_str
-            fileHeader +="""
+                mod_reg_str = f' * --     {module_Name}  register bit description\n'
+                fileHeader += mod_reg_str
+                fileHeader +="""
  * --------------------------------------------------------------------------*/
 
 """
 
-            fileHeader += fileRegFdOpstr
-            fileHeader += f'\n#endif // __{module_Header}_H\n'
-            fileHeader += """
+                fileHeader += fileRegFdOpstr
+                fileHeader += f'\n#endif // __{module_Header}_H\n'
+                fileHeader += """
 /*
  * ****************************************************************************
  * End File
@@ -1602,9 +1609,9 @@ def output_C_moduleFile(preip_lst, preip_name, version):
  */
 
 """
-            out_file.write(fileHeader)
+                out_file.write(fileHeader)
 
-            return out_file_Pathname
+                return out_file_Pathname
 
 def getCluRegStructInfo(clust_reg_lst, module_Name, nPLastOffset,nChild_level = 0):
     cst_newLine_tab_str= ''
@@ -1624,7 +1631,7 @@ def getCluRegStructInfo(clust_reg_lst, module_Name, nPLastOffset,nChild_level = 
             if curGroupName:
                 fileHeader += newLine_tab_str+'} '+f'{curGroupName};\n'
                 curGroupName = ''
-            clu_reg_str_info, clu_reg_Op_str,nLastOffset = getCluRegStructInfo(clu_reg.chd_clust_reg_list,module_Name,nLastOffset,nChild_level+1)
+            clu_reg_str_info, clu_reg_Op_str,nLastOffset = getCluRegStructInfo(clu_reg.clusters,module_Name,nLastOffset,nChild_level+1)
             fileHeader += clu_reg_str_info
             fileRegFdOpstr += clu_reg_Op_str
             fileHeader += newLine_tab_str+'} '+f'{clu_reg.name};\n'
@@ -1635,14 +1642,14 @@ def getCluRegStructInfo(clust_reg_lst, module_Name, nPLastOffset,nChild_level = 
             #     uint_str = uint_dict[clu_reg.size]
             # regName = clu_reg.getRegName().upper()
             # print(f'reg: {clu_reg.name}')
-            if clu_reg.alterGroupName:
+            if clu_reg.alternateGroupName:
                 union_str = ''
-                if curGroupName != clu_reg.alterGroupName:
+                if curGroupName != clu_reg.alternateGroupName:
                     if curGroupName:
                         fileHeader += newLine_tab_str+'} '+f'{curGroupName};\n'
                     union_str = newLine_tab_str+'union {\n'
-                    curGroupName = clu_reg.alterGroupName
-                offsetInfo,regFdInfo,regFdOpstr,nRegReservedIndex,nLastOffset = getRegFiledInfo(accessDict,newLine_tab_str, uint_dict, clu_reg,module_Name,nRegReservedIndex,nLastOffset)
+                    curGroupName = clu_reg.alternateGroupName
+                offsetInfo,regFdInfo,regFdOpstr,nRegReservedIndex,nLastOffset = getRegFieldInfo(accessDict,newLine_tab_str, uint_dict, clu_reg,module_Name,nRegReservedIndex,nLastOffset)
                 fileHeader += offsetInfo
                 fileHeader += union_str
                 fileHeader += regFdInfo
@@ -1651,7 +1658,7 @@ def getCluRegStructInfo(clust_reg_lst, module_Name, nPLastOffset,nChild_level = 
                 if curGroupName:
                     fileHeader +=  newLine_tab_str+'} '+f'{curGroupName};\n'
                     curGroupName = ''
-                offsetInfo,regFdInfo,regFdOpstr,nRegReservedIndex,nLastOffset = getRegFiledInfo(accessDict,cst_newLine_tab_str,uint_dict,clu_reg,module_Name,nRegReservedIndex,nLastOffset)
+                offsetInfo,regFdInfo,regFdOpstr,nRegReservedIndex,nLastOffset = getRegFieldInfo(accessDict,cst_newLine_tab_str,uint_dict,clu_reg,module_Name,nRegReservedIndex,nLastOffset)
                 fileHeader += offsetInfo
                 fileHeader += regFdInfo
                 fileRegFdOpstr += regFdOpstr
@@ -1659,10 +1666,10 @@ def getCluRegStructInfo(clust_reg_lst, module_Name, nPLastOffset,nChild_level = 
 
 
 
-def getRegFiledInfo(accessDict,tab_str, uint_dict, clu_reg,moduleName,nRegReservedIndex, nLastOffset):
+def getRegFieldInfo(accessDict,tab_str, uint_dict, clu_reg: St_Register ,moduleName,nRegReservedIndex, nLastOffset):
     # 需要增加 dim 部分的处理逻辑
     fileHeader = ''
-    retOpstr = f'/**\n * @name {clu_reg.name} - {clu_reg.desc},Offset: {clu_reg.addressOffset}\n * @'+'{\n */\n'
+    retOpstr = f'/**\n * @name {clu_reg.name} - {clu_reg.description}, Offset: {clu_reg.addressOffset}\n * @'+'{\n */\n'
 
     if clu_reg.size in uint_dict:
         uint_str = uint_dict[clu_reg.size]
@@ -1724,7 +1731,7 @@ def getRegFiledInfo(accessDict,tab_str, uint_dict, clu_reg,moduleName,nRegReserv
         else:
             lastRow_str += ';'
         lastRow_str = lastRow_str.ljust(cst_Reg_SpaceSize)
-        fileHeader += lastRow_str + f'/*!< Offset: {clu_reg.addressOffset} ({clu_reg.access}),  {clu_reg.desc} */\n'
+        fileHeader += lastRow_str + f'/*!< Offset: {clu_reg.addressOffset} ({clu_reg.access}),  {clu_reg.description} */\n'
         lastRow_str = ''
         nRegReservedIndex += 1
         pass
@@ -1732,80 +1739,81 @@ def getRegFiledInfo(accessDict,tab_str, uint_dict, clu_reg,moduleName,nRegReserv
         regFdStr=''
         nValidFdCount=0
 
-        if clu_reg.fd_lst:
+        if clu_reg.fields:
             regFdStr = 'struct {\n'
             curBitPos=0
             reservedindex =0
-            for fd in clu_reg.fd_lst:
-                row_str=''
-                fd_Op_str = ''
-                fd_head_str = fd_body_str = ''
+            for fd in clu_reg.fields:
+                if isinstance(fd,St_Field):
+                    row_str=''
+                    fd_Op_str = ''
+                    fd_head_str = fd_body_str = ''
 
-                if fd.offset > curBitPos:
-                    #添加reserved
-                    row_str+=f'{row_fd_tab_str}{uint_str} reserved{reservedindex}: {curBitPos-fd.offset};'
-                    reservedindex+=1
-                    nValidFdCount+=1
+                    if fd.bitOffset > curBitPos:
+                        #添加reserved
+                        row_str+=f'{row_fd_tab_str}{uint_str} reserved{reservedindex}: {curBitPos - fd.bitOffset};'
+                        reservedindex += 1
+                        nValidFdCount += 1
 
-                curBitPos=fd.offset+fd.bitWidth
-                
-                if fd.name == 'RESERVED':
-                    if curBitPos != clu_reg.size:
-                        #最上面的保留字段，不生成
-                        row_str+=f'{row_fd_tab_str}{uint_str} reserved{reservedindex}: {fd.bitWidth};'
-                        reservedindex+=1
+                    curBitPos = fd.bitOffset + fd.bitWidth
+                    
+                    if fd.name == 'RESERVED':
+                        if curBitPos != clu_reg.size:
+                            #最上面的保留字段，不生成
+                            row_str+=f'{row_fd_tab_str}{uint_str} reserved{reservedindex}: {fd.bitWidth};'
+                            reservedindex+=1
+                        else:
+                            continue
                     else:
-                        continue
-                else:
-                    nValidFdCount += 1
-                    row_str+=f'{row_fd_tab_str}{uint_str} {fd.name}: {fd.bitWidth};'
+                        nValidFdCount += 1
+                        row_str+=f'{row_fd_tab_str}{uint_str} {fd.name}: {fd.bitWidth};'
 
-                    endBit=fd.bitWidth+fd.offset-1
-                    fd_head_str = f'/** Bit[{endBit}:{fd.offset}] {fd.name}  - {fd.access}, {fd.desc}\n'
-                    if fd.writeConstraint == 'range':
-                        fd_head_str += f' * Range: ( {fd.range_min} --{fd.range_max})\n'
-                        pass
+                        endBit = fd.bitWidth + fd.bitOffset - 1
+                        fd_head_str = f'/** Bit[{endBit}:{fd.bitOffset}] {fd.name}  - {fd.access}, {fd.description}\n'
+                        if fd.writeConstraint == 'range':
+                            fd_head_str += f' * Range: ( {fd.range_min} --{fd.range_max})\n'
+                            pass
 
-                    regFdName = f'{moduleName}_{clu_reg.name}_{fd.name}'
-                    regFdPos = f'{regFdName}_POS'
-                    regFdOpStr = f'#define {regFdPos}'
-                    regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
-                    regFdOpStr += f'{fd.offset}U\n'
-                    fd_body_str += regFdOpStr
-                    regFdMsk = f'{regFdName}_MSK'
-                    regFdOpStr = f'#define {regFdMsk}'
-                    regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
-                    markVal = bitWidMask_arr[fd.bitWidth-1]
-                    regFdOpStr += f'(({uint_str}) {markVal} << {regFdPos})\n'
-                    fd_body_str += regFdOpStr
-                    if fd.enumVals:
-                        #仅定义 enum 
-                        for e in fd.enumVals:
-                            enumName=e.name.upper()
-                            regFdOpStr = f'#define {regFdName}_{enumName}'
-                            regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
-                            regFdOpStr += f'({e.value}U << {regFdPos})\n'
-                            fd_body_str += regFdOpStr
-
-                            fd_head_str += f' * - {e.value} : {e.desc}\n'
-                        pass
-                    else:
-                        regFdOpStr = f'#define {regFdName}_GET(val)'
+                        regFdName = f'{moduleName}_{clu_reg.name}_{fd.name}'
+                        regFdPos = f'{regFdName}_POS'
+                        regFdOpStr = f'#define {regFdPos}'
                         regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
-                        regFdOpStr += f'(({uint_str}) ((val) & {regFdMsk}) >> {regFdPos})\n'
+                        regFdOpStr += f'{fd.bitOffset}U\n'
                         fd_body_str += regFdOpStr
-                        if fd.access.find('W') != -1:
-                            regFdOpStr = f'#define {regFdName}_SET(val)'
-                            regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
-                            regFdOpStr += f'(({uint_str}) ((val) & {markVal}) << {regFdPos})\n'
-                            fd_body_str += regFdOpStr
-                    fd_head_str += ' */\n'
+                        regFdMsk = f'{regFdName}_MSK'
+                        regFdOpStr = f'#define {regFdMsk}'
+                        regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
+                        markVal = bitWidMask_arr[fd.bitWidth-1]
+                        regFdOpStr += f'(({uint_str}) {markVal} << {regFdPos})\n'
+                        fd_body_str += regFdOpStr
+                        if fd.enumValues:
+                            #仅定义 enum 
+                            for e in fd.enumValues:
+                                enumName=e.name.upper()
+                                regFdOpStr = f'#define {regFdName}_{enumName}'
+                                regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
+                                regFdOpStr += f'({e.value}U << {regFdPos})\n'
+                                fd_body_str += regFdOpStr
 
-                fd_Op_str = fd_head_str + fd_body_str +'\n'
-                retOpstr += fd_Op_str
-                row_str = row_str.ljust(cst_RegField_SpaceSize)
-                row_str += f'/*!< bitOffset: {fd.offset} ({fd.access}), {fd.desc} */\n'
-                regFdStr += row_str
+                                fd_head_str += f' * - {e.value} : {e.desc}\n'
+                            pass
+                        else:
+                            regFdOpStr = f'#define {regFdName}_GET(val)'
+                            regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
+                            regFdOpStr += f'(({uint_str}) ((val) & {regFdMsk}) >> {regFdPos})\n'
+                            fd_body_str += regFdOpStr
+                            if fd.access.find('W') != -1:
+                                regFdOpStr = f'#define {regFdName}_SET(val)'
+                                regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
+                                regFdOpStr += f'(({uint_str}) ((val) & {markVal}) << {regFdPos})\n'
+                                fd_body_str += regFdOpStr
+                        fd_head_str += ' */\n'
+
+                    fd_Op_str = fd_head_str + fd_body_str +'\n'
+                    retOpstr += fd_Op_str
+                    row_str = row_str.ljust(cst_RegField_SpaceSize)
+                    row_str += f'/*!< bitOffset: {fd.bitOffset} ({fd.access}), {fd.description} */\n'
+                    regFdStr += row_str
             # regFdStr += row_tab_str+'}'
         if nValidFdCount in (0,1) :
             lastRow_str = fileHeader + uint_str
@@ -1830,7 +1838,7 @@ def getRegFiledInfo(accessDict,tab_str, uint_dict, clu_reg,moduleName,nRegReserv
         else:
             lastRow_str += ';'
         lastRow_str = lastRow_str.ljust(cst_Reg_SpaceSize)
-        fileHeader += lastRow_str + f'/*!< Offset: {clu_reg.addressOffset} ({clu_reg.access}),  {clu_reg.desc} */\n'
+        fileHeader += lastRow_str + f'/*!< Offset: {clu_reg.addressOffset} ({clu_reg.access}),  {clu_reg.description} */\n'
         lastRow_str = ''
         pass
 
@@ -2227,7 +2235,7 @@ def checkDeviceSheet(ws):
     st_dev.version = ws['B4'].value
     st_dev.series = ws['B5'].value
     st_dev.width = ws['B6'].value
-    st_dev.desc = ws['B7'].value
+    st_dev.description = ws['B7'].value
 
     row = 9
     mem_row_pos = cpu_row_pos = 0
@@ -2275,30 +2283,30 @@ def checkDeviceSheet(ws):
                     st_cpu.endian = endian
                     if isinstance(srs,str) :
                         if srs == '1' or srs.upper() == 'TRUE':
-                            st_cpu.srs = True
+                            st_cpu.srsPresent = True
                     elif isinstance(srs,bool):
-                        st_cpu.srs = srs
+                        st_cpu.srsPresent = srs
                     if isinstance(mpu,str) :
                         if mpu == '1' or mpu.upper() == 'TRUE':
-                            st_cpu.mpu = True
+                            st_cpu.mpuPresent = True
                     elif isinstance(mpu,bool):
-                        st_cpu.mpu = mpu
+                        st_cpu.mpuPresent = mpu
                     if isinstance(fpu,str) :
                         if fpu == '1' or fpu.upper() == 'TRUE':
-                            st_cpu.fpu = True
+                            st_cpu.fpuPresent = True
                     elif isinstance(fpu,bool):
-                        st_cpu.fpu = fpu
+                        st_cpu.fpuPresent = fpu
                     if isinstance(dsp,str) :
                         if dsp == '1' or dsp.upper() == 'TRUE':
-                            st_cpu.dsp = True
+                            st_cpu.dspPresent = True
                     elif isinstance(dsp,bool):
-                        st_cpu.dsp = dsp
+                        st_cpu.dspPresent = dsp
                     
                     if isinstance(icache,str) :
                         if icache == '1' or icache.upper() == 'TRUE':
-                            st_cpu.icache = True
+                            st_cpu.icachePresent = True
                     elif isinstance(icache,bool):
-                        st_cpu.icache = icache
+                        st_cpu.icachePresent = icache
 
                     if isinstance(dcache,str) :
                         if dcache == '1' or dcache.upper() == 'TRUE':
@@ -2314,9 +2322,9 @@ def checkDeviceSheet(ws):
 
                     if isinstance(itcm,str) :
                         if itcm == '1' or itcm.upper() == 'TRUE':
-                            st_cpu.itcm = True
+                            st_cpu.itcmPresent = True
                     elif isinstance(itcm,bool):
-                        st_cpu.itcm = itcm
+                        st_cpu.itcmPresent = itcm
 
                     if isinstance(ditcm,str) :
                         if ditcm == '1' or ditcm.upper() == 'TRUE':
@@ -2326,9 +2334,9 @@ def checkDeviceSheet(ws):
 
                     if isinstance(l2cache,str) :
                         if l2cache == '1' or l2cache.upper() == 'TRUE':
-                            st_cpu.l2cache = True
+                            st_cpu.l2cachePresent = True
                     elif isinstance(l2cache,bool):
-                        st_cpu.l2cache = l2cache
+                        st_cpu.l2cachePresent = l2cache
 
                     st_dev.cpus.append(st_cpu)
 
@@ -2352,15 +2360,15 @@ def checkDeviceSheet(ws):
                 if mem_name and addrbase and addrOffset and addrOffset and size and access and usage:
                     st_mem = St_Memory(mem_name)
                     st_mem.derivedFrom = ws.cell(row_i, mem_col_dict['derivedFrom']).value
-                    st_mem.addrBase = addrbase
-                    st_mem.addrOffset = addrOffset
+                    st_mem.baseAddress = addrbase
+                    st_mem.addressOffset = addrOffset
                     st_mem.size = size
                     st_mem.access = access
                     st_mem.usage = usage
                     st_mem.processor = ws.cell(row_i, mem_col_dict['processor']).value
                     desc = ws.cell(row_i, mem_col_dict['description']).value
                     if desc:
-                        st_mem.desc = desc
+                        st_mem.description = desc
                     st_dev.memories.append(st_mem)
 
     return st_dev
@@ -2395,6 +2403,9 @@ def dealwith_excel(xls_file, outFlag=1):
                 st_dev.peripherals[sh_name] = perip_lst
                 if irq_set and isinstance(irq_set,set):
                     st_dev.interupts.update(irq_set)
+                # dev_json = json.JSONEncoder().encode(st_dev)
+                # with open('./dev.json', 'w+') as out_file: 
+                #     out_file.write(dev_json)
                 
 
     if checkErr:
