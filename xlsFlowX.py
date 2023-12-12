@@ -353,6 +353,8 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
         return False
     # 从第三行开始读取直到空行
     nRows = ws.max_row
+    maxCols = ws.max_column
+
     flag_names = ('addressBlocks:', 'interrupts:',
                   'cluster:', 'end cluster', 'register:')
     flag_dict = {}
@@ -518,12 +520,20 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
             if f_i < flags_count-1:
                 row_end = flag_rows[f_i+1] - 1
             # 读取addrblocks
+            #先读出CPU的各列对应的字段
+            row_addr_header =a_i+1
+            addrb_col_dict = {}
+            for col_i in range(1,maxCols):
+                val = ws.cell(row_addr_header,col_i).value
+                if val:
+                    addrb_col_dict[val] = col_i
+            # print(addrb_col_dict)
             row = a_i+2
             while row <= row_end:
                 if row not in emptyA_rows:
-                    offset = ws.cell(row, 1).value
-                    size = ws.cell(row, 2).value
-                    usage = ws.cell(row, 3).value
+                    offset = ws.cell(row, addrb_col_dict['offset']).value
+                    size = ws.cell(row, addrb_col_dict['size']).value
+                    usage = ws.cell(row, addrb_col_dict['usage']).value
                     st_addrb = St_AddressBlock(offset)
                     st_addrb.size = size
                     st_addrb.usage = usage
@@ -540,13 +550,21 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
             f_i = flag_rows.index(a_i)
             if f_i < flags_count-1:
                 row_end = flag_rows[f_i+1] - 1
-            # 读取addrblocks
+            # 读取interrupts
+            #先读出CPU的各列对应的字段
+            row_itq_header =a_i+1
+            itq_col_dict = {}
+            for col_i in range(1,maxCols):
+                val = ws.cell(row_itq_header,col_i).value
+                if val:
+                    itq_col_dict[val] = col_i
+            # print(itq_col_dict)
             row = a_i+2
             while row <= row_end:
                 if row not in emptyA_rows:
-                    name = ws.cell(row, 1).value
-                    val = ws.cell(row, 2).value
-                    desc = ws.cell(row, 3).value
+                    name = ws.cell(row, itq_col_dict['name']).value
+                    val = ws.cell(row, itq_col_dict['number']).value
+                    desc = ws.cell(row, itq_col_dict['description']).value
                     st_inter = St_Interrupt(name)
                     st_inter.value = val
                     st_inter.desc = desc
@@ -659,6 +677,16 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
 
 def readRegister(ws, row_end, row_start, parent_clu_reg_list):
     bError = False
+    maxCols = ws.max_column
+    #先读出CPU的各列对应的字段
+    row_reg_header = row_start + 1
+    reg_col_dict = {}
+    for col_i in range(1,maxCols):
+        val = ws.cell(row_reg_header,col_i).value
+        if val:
+            reg_col_dict[val] = col_i
+    # print(reg_col_dict)
+    regFd_col_dict = {}
     row = row_start+2
     bField = False
     cur_st_reg = None
@@ -674,28 +702,33 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                 if name == 'fields:':  # 开始处理 field
                     bField = True
                     row += 1
+                    for col_i in range(1,maxCols):
+                        val = ws.cell(row,col_i).value
+                        if val:
+                            regFd_col_dict[val] = col_i
+                    # print(regFd_col_dict)
                 else:
-                    offset = ws.cell(row, 2).value
-                    size = ws.cell(row, 3).value
-                    access = ws.cell(row, 4).value
+                    offset = ws.cell(row, reg_col_dict['addressOffset']).value
+                    size = ws.cell(row, reg_col_dict['size']).value
+                    access = ws.cell(row, reg_col_dict['access']).value
                     cur_st_reg = St_Register(name, access, size)
                     cur_st_reg.addressOffset = offset
                     addrOffset = int(offset[2:], 16)
-                    cur_st_reg.resetValue = ws.cell(row, 5).value
-                    cur_st_reg.resetMask = ws.cell(row, 6).value
-                    cur_st_reg.cRegName = ws.cell(row, 8).value
-                    cur_st_reg.alterReg = ws.cell(row, 9).value
-                    cur_st_reg.alterGroupName = ws.cell(row, 10).value
-                    cur_st_reg.dim = ws.cell(row, 11).value
-                    dimIncrement = ws.cell(row, 12).value
+                    cur_st_reg.resetValue = ws.cell(row, reg_col_dict['resetValue']).value
+                    cur_st_reg.resetMask = ws.cell(row, reg_col_dict['resetMask']).value
+                    cur_st_reg.cRegName = ws.cell(row, reg_col_dict['headRegisterName']).value
+                    cur_st_reg.alterReg = ws.cell(row, reg_col_dict['alternateRegister']).value
+                    cur_st_reg.alterGroupName = ws.cell(row, reg_col_dict['alternateGroupName']).value
+                    cur_st_reg.dim = ws.cell(row, reg_col_dict['dim']).value
+                    dimIncrement = ws.cell(row, reg_col_dict['dimIncrement']).value
                     if isinstance(dimIncrement,str):
                         dimIncrement = int (dimIncrement)
                     cur_st_reg.dimIncrement = dimIncrement
-                    cur_st_reg.dimName = ws.cell(row, 13).value
-                    desc = ws.cell(row, 14).value
+                    cur_st_reg.dimName = ws.cell(row, reg_col_dict['dimName']).value
+                    desc = ws.cell(row, reg_col_dict['description']).value
                     if desc:
                         cur_st_reg.desc = desc
-                    hdl_path = ws.cell(row, 16).value
+                    hdl_path = ws.cell(row, reg_col_dict['pathHDL']).value
                     if hdl_path:
                         cur_st_reg.hdl_path = hdl_path
                     if parent_clu_reg_list:
@@ -711,7 +744,7 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                     else:
                         parent_clu_reg_list.append(cur_st_reg)
             else:
-                name = ws.cell(row, 2).value
+                name = ws.cell(row, regFd_col_dict['bitName']).value
                 if not name:
                     row += 1
                     continue
@@ -727,23 +760,23 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                             break
                 if not bSameFieldAsPrev:
                     cur_reg_fd = fd = St_Field(name.upper())
-                    bitrange = ws.cell(row, 1).value
+                    bitrange = ws.cell(row, regFd_col_dict['bitRange']).value
                     end, op, start = bitrange.partition(':')
                     start_bit = start[0:-1]
                     end_bit = end[1:]
                     offset = nStart_bit = int(start_bit)
                     nEnd_bit = int(end_bit)
                     bitWidth = nEnd_bit - nStart_bit+1
-                    access = ws.cell(row, 3).value
-                    defaultVal = ws.cell(row, 4).value
-                    writeConstraint = ws.cell(row, 5).value
-                    range_min = ws.cell(row, 6).value
-                    range_max = ws.cell(row, 7).value
-                    enumName = ws.cell(row, 8).value
-                    enumVal = ws.cell(row, 9).value
-                    enumDesc = ws.cell(row, 10).value
-                    desc = ws.cell(row, 12).value
-                    hdl_path =ws.cell(row,15).value
+                    access = ws.cell(row, regFd_col_dict['access']).value
+                    defaultVal = ws.cell(row, regFd_col_dict['defaultValue']).value
+                    writeConstraint = ws.cell(row, regFd_col_dict['writeConstraint']).value
+                    range_min = ws.cell(row, regFd_col_dict['minimum']).value
+                    range_max = ws.cell(row, regFd_col_dict['maximum']).value
+                    enumName = ws.cell(row, regFd_col_dict['enumName']).value
+                    enumVal = ws.cell(row, regFd_col_dict['enumValue']).value
+                    enumDesc = ws.cell(row, regFd_col_dict['enumDescription']).value
+                    desc = ws.cell(row, regFd_col_dict['description']).value
+                    hdl_path =ws.cell(row,regFd_col_dict['pathHDL']).value
                     fd.offset = offset
                     fd.bitWidth = bitWidth
                     fd.access = access
@@ -771,8 +804,8 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                     if not binsertFd:
                         cur_st_reg.fd_lst.append(fd)
                 else:
-                    enumName = ws.cell(row, 8).value
-                    enumVal = ws.cell(row, 9).value
+                    enumName = ws.cell(row, regFd_col_dict['enumName']).value
+                    enumVal = ws.cell(row, regFd_col_dict['enumValue']).value
                     if isHexString(enumVal):
                         nEnumVal = int(enumVal[2:],16)
                         bitMask = bitWidMask_arr[fd.bitWidth-1]
@@ -781,7 +814,7 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                             print(f'Error: In Register Field enum value extends the bitRange at  Row {row}')
                             bError = True
                             pass
-                    enumDesc = ws.cell(row, 10).value
+                    enumDesc = ws.cell(row, regFd_col_dict['enumDescription']).value
                     if enumName and enumVal:
                         enum_item = St_Enum_Val(enumName, enumVal)
                         enum_item.desc = enumDesc
@@ -795,6 +828,15 @@ def readCluster(ws: worksheet, parent_clu_reg_list, clu_range: St_ClusterInnerRa
     bError = False
     clu_start = clu_range.rowStart
     clu_end = clu_range.rowEnd
+    maxCols = ws.max_column
+    #先读出CPU的各列对应的字段
+    row_cluster_header = clu_start + 1
+    cluster_col_dict = {}
+    for col_i in range(1,maxCols):
+        val = ws.cell(row_cluster_header,col_i).value
+        if val:
+            cluster_col_dict[val] = col_i
+    # print(cluster_col_dict)
     row = clu_start+2
     st_clu = None
     while row < clu_end:
@@ -826,14 +868,14 @@ def readCluster(ws: worksheet, parent_clu_reg_list, clu_range: St_ClusterInnerRa
             st_clu = St_Cluster(name)
             st_clu.rowStart = clu_start
             st_clu.rowEnd = clu_end
-            st_clu.addressOffset = ws.cell(row, 2).value
+            st_clu.addressOffset = ws.cell(row, cluster_col_dict['addressOffset']).value
             addrOffset = int(st_clu.addressOffset[2:], 16)
-            st_clu.alterCluster = ws.cell(row, 3).value
-            st_clu.alterGroupName = ws.cell(row, 4).value
-            st_clu.cStructName = ws.cell(row, 5).value
-            st_clu.dim = ws.cell(row, 6).value
-            st_clu.dimIncrement = ws.cell(row, 7).value
-            st_clu.desc = ws.cell(row, 8).value
+            st_clu.alterCluster = ws.cell(row, cluster_col_dict['alternateCluster']).value
+            st_clu.alterGroupName = ws.cell(row, cluster_col_dict['alternateGroupName']).value
+            st_clu.cStructName = ws.cell(row, cluster_col_dict['headerStructName']).value
+            st_clu.dim = ws.cell(row, cluster_col_dict['dim']).value
+            st_clu.dimIncrement = ws.cell(row, cluster_col_dict['dimIncrement']).value
+            st_clu.desc = ws.cell(row, cluster_col_dict['description']).value
             if parent_clu_reg_list:
                 i = 0
                 for clu_reg in parent_clu_reg_list:
@@ -1635,7 +1677,7 @@ def getRegFiledInfo(accessDict,tab_str, uint_dict, clu_reg,moduleName,nRegReserv
     sizeinfo = f'size:  {math.floor(clu_reg.size/8)}'
     if clu_reg.dim:
         sizeinfo += f', dim: {clu_reg.dim} * {clu_reg.dimIncrement}'
-    print(f'reg: {clu_reg.name}, reg_offset: {reg_offset}, {sizeinfo} , LastOffset: {nLastOffset}')
+    # print(f'reg: {clu_reg.name}, reg_offset: {reg_offset}, {sizeinfo} , LastOffset: {nLastOffset}')
     if reg_offset > nLastOffset:
         nNeedReserved =reg_offset - nLastOffset
         if nNeedReserved >1:
@@ -2190,6 +2232,7 @@ def checkDeviceSheet(ws):
     row = 9
     mem_row_pos = cpu_row_pos = 0
     nRows = ws.max_row
+    maxCols = ws.max_column
     while row <= nRows:
         val = ws.cell(row, 1).value
         if val == 'cpus:':
@@ -2203,23 +2246,31 @@ def checkDeviceSheet(ws):
         if mem_row_pos > cpu_row_pos+2:
             end_row_pos = mem_row_pos-1
         if end_row_pos > cpu_row_pos+2:
+            #先读出CPU的各列对应的字段
+            row_cpu_header =cpu_row_pos+1
+            cpu_col_dict = {}
+            for col_i in range(1,maxCols):
+                val = ws.cell(row_cpu_header,col_i).value
+                if val:
+                    cpu_col_dict[val] = col_i
+            # print(cpu_col_dict)
             for row_i in range(cpu_row_pos+2, end_row_pos):
-                cpu_name = ws.cell(row_i, 2).value
-                revision = ws.cell(row_i, 3).value
-                endian = ws.cell(row_i, 4).value
-                srs = ws.cell(row_i, 5).value
-                mpu = ws.cell(row_i, 6).value
-                fpu = ws.cell(row_i, 7).value
-                dsp = ws.cell(row_i, 8).value
-                icache = ws.cell(row_i,9).value
-                dcache = ws.cell(row_i,10).value
-                mmu = ws.cell(row_i,11).value
-                itcm = ws.cell(row_i,12).value
-                ditcm = ws.cell(row_i,13).value
-                l2cache = ws.cell(row_i,14).value
+                cpu_name = ws.cell(row_i, cpu_col_dict['name']).value
+                revision = ws.cell(row_i, cpu_col_dict['revision']).value
+                endian = ws.cell(row_i, cpu_col_dict['endian']).value
+                srs = ws.cell(row_i, cpu_col_dict['srsPresent']).value
+                mpu = ws.cell(row_i, cpu_col_dict['mpuPresent']).value
+                fpu = ws.cell(row_i, cpu_col_dict['fpuPresent']).value
+                dsp = ws.cell(row_i, cpu_col_dict['dspPresent']).value
+                icache = ws.cell(row_i,cpu_col_dict['icachePresent']).value
+                dcache = ws.cell(row_i,cpu_col_dict['dcachePresent']).value
+                mmu = ws.cell(row_i,cpu_col_dict['mmuPresent']).value
+                itcm = ws.cell(row_i,cpu_col_dict['itcmPresent']).value
+                ditcm = ws.cell(row_i,cpu_col_dict['dtcmPresent']).value
+                l2cache = ws.cell(row_i,cpu_col_dict['l2cachePresent']).value
                 if cpu_name and revision and endian:
                     st_cpu = St_CPU(cpu_name)
-                    st_cpu.derivedFrom = ws.cell(row_i, 1).value
+                    st_cpu.derivedFrom = ws.cell(row_i, cpu_col_dict['derivedFrom']).value
                     st_cpu.revision = revision
                     st_cpu.endian = endian
                     if isinstance(srs,str) :
@@ -2283,24 +2334,31 @@ def checkDeviceSheet(ws):
 
     if mem_row_pos > 0:
         end_row_pos = nRows
+        row_mem_header = mem_row_pos + 1
+        mem_col_dict = {}
+        for col_i in range(1,maxCols):
+            val = ws.cell(row_mem_header,col_i).value
+            if val:
+                mem_col_dict[val] = col_i
+        # print(mem_col_dict)
         if end_row_pos > mem_row_pos+2:
             for row_i in range(mem_row_pos+2, end_row_pos):
-                mem_name = ws.cell(row_i, 2).value
-                addrbase = ws.cell(row_i, 3).value
-                addrOffset = ws.cell(row_i, 4).value
-                size = ws.cell(row_i, 5).value
-                access = ws.cell(row_i, 6).value
-                usage = ws.cell(row_i, 7).value
+                mem_name = ws.cell(row_i, mem_col_dict['name']).value
+                addrbase = ws.cell(row_i, mem_col_dict['addressBase']).value
+                addrOffset = ws.cell(row_i, mem_col_dict['addressOffset']).value
+                size = ws.cell(row_i, mem_col_dict['size']).value
+                access = ws.cell(row_i, mem_col_dict['access']).value
+                usage = ws.cell(row_i, mem_col_dict['usage']).value
                 if mem_name and addrbase and addrOffset and addrOffset and size and access and usage:
                     st_mem = St_Memory(mem_name)
-                    st_mem.derivedFrom = ws.cell(row_i, 1).value
+                    st_mem.derivedFrom = ws.cell(row_i, mem_col_dict['derivedFrom']).value
                     st_mem.addrBase = addrbase
                     st_mem.addrOffset = addrOffset
                     st_mem.size = size
                     st_mem.access = access
                     st_mem.usage = usage
-                    st_mem.processor = ws.cell(row_i, 8).value
-                    desc = ws.cell(row_i, 9).value
+                    st_mem.processor = ws.cell(row_i, mem_col_dict['processor']).value
+                    desc = ws.cell(row_i, mem_col_dict['description']).value
                     if desc:
                         st_mem.desc = desc
                     st_dev.memories.append(st_mem)
