@@ -3,3 +3,6 @@
 /reg
 *.zip
 *.xlsx
+*.c
+*.obj
+*.exe
