@@ -956,6 +956,7 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                     dimIncrement = ws.cell(row, reg_col_dict['dimIncrement']).value
                     if isinstance(dimIncrement,str):
                         dimIncrement = int (dimIncrement)
+                    if isinstance(dimIncrement,int):
                         cur_st_reg.dimIncrement = dimIncrement
                     dimName = ws.cell(row, reg_col_dict['dimName']).value
                     if dimName:
@@ -1939,7 +1940,7 @@ def getRegFieldInfo(accessDict,tab_str, uint_dict, clu_reg: St_Register ,moduleN
     sizeinfo = f'size:  {math.floor(clu_reg.size/8)}'
     if clu_reg.dim:
         sizeinfo += f', dim: {clu_reg.dim} * {clu_reg.dimIncrement}'
-    # print(f'reg: {clu_reg.name}, reg_offset: {reg_offset}, {sizeinfo} , LastOffset: {nLastOffset}')
+    print(f'reg: {clu_reg.name}, reg_offset: {reg_offset}, {sizeinfo} , LastOffset: {nLastOffset}')
     if reg_offset > nLastOffset:
         nNeedReserved =reg_offset - nLastOffset
         if nNeedReserved >1:
