@@ -58,7 +58,11 @@ cst_RegField_SpaceSize = 48
 
 # uint_type_arr = ('uint8_t', 'uint16_t', 'uint32_t', 'uint64_t')
 
-
+def getBoolStr(val: bool):
+    rt_str = 'false'
+    if val:
+        rt_str='true'
+    return rt_str
 
 
 class St_CPU:
@@ -81,6 +85,10 @@ class St_CPU:
     def get_inst_str(self):
         return f'name:{self.name},derivedFrom:{self.derivedFrom},revision:{self.revision},endian:{self.endian},srs:{self.srsPresent},mpu:{self.mpuPresent},fpu:{self.fpuPresent},dsp:{self.dspPresent},icache:{self.icachePresent},dcache:{self.dcachePresent},itcm:{self.itcmPresent},dtcm:{self.dtcmPresent},l2cache:{self.l2cachePresent}'
 
+    def toJson(self):
+        json_str = '{\n'+f'"name": "{self.name}","revision": "{self.revision}","derivedFrom": "{self.derivedFrom}","endian": "{self.endian}","srsPresent": {getBoolStr(self.srsPresent)},"mpuPresent": {getBoolStr(self.mpuPresent)},"fpuPresent": {getBoolStr(self.fpuPresent)}'
+        json_str += f',"dspPresent": {getBoolStr(self.dspPresent)},"icachePresent": {getBoolStr(self.icachePresent)},"dcachePresent": {getBoolStr(self.dcachePresent)},"mmu": {getBoolStr(self.mmu)},"itcmPresent": {getBoolStr(self.itcmPresent)},"dtcmPresent": {getBoolStr(self.dtcmPresent)},"l2cachePresent": {getBoolStr(self.l2cachePresent)}' + '\n}'
+        return json_str
 
 class St_Interrupt:
     def __init__(self, name):
@@ -90,6 +98,9 @@ class St_Interrupt:
 
     def get_inst_str(self):
         return f'Interrupt:  name:{self.name},value:{self.value},desc:{self.description}'
+    
+    def toJson(self): 
+        return '{\n' + f'"name":"{self.name}","value": {self.value},"description": "{self.description}"' + '\n}'
 
 
 class St_AddressBlock:
@@ -100,6 +111,9 @@ class St_AddressBlock:
 
     def get_inst_str(self):
         return f'AddressBlock:  offset:{self.offset},size:{self.size},usage:{self.usage}'
+    
+    def toJson(self): 
+        return '{\n' + f'"offset": "{self.offset}","size": "{self.size}","usage": "{self.usage}"' + '\n}'
 
 
 class St_Memory:
@@ -117,15 +131,22 @@ class St_Memory:
     def get_inst_str(self):
         return f'Memory:  name:{self.name},derivedFrom:{self.derivedFrom},addrBase:{self.baseAddress},addrOffset:{self.addressOffset},size:{self.size},access:{self.access},usage:{self.usage},proc:{self.processor},desc:{self.description}'
 
+    def toJson(self):
+        json_str = '{\n'+f'"name": "{self.name}","derivedFrom": "{self.derivedFrom}","baseAddress": "{self.baseAddress}","addressOffset": "{self.addressOffset}","size": {self.size},"access": "{self.access}","usage": "{self.usage}","processor": "{self.processor}","description": "{self.description}"' + '\n}'
+        return json_str
 
 class St_Enum_Val:
-    def __init__(self, name, val):
+    def __init__(self, name:str, val):
         self.name = name
         self.desc = ''
         self.value = val
 
     def get_inst_str(self):
         return f'enum {self.name} = {self.value}\t // {self.desc}'
+    
+    def toJson(self):
+        json_str = '{\n'+f'"name": "{self.name}","description": "{self.desc}","value": "{self.value}"' + '\n}'
+        return json_str
 
 
 class St_Field:
@@ -135,7 +156,7 @@ class St_Field:
         self.bitOffset = 0
         self.bitWidth = 1
         self.access = 'RW'
-        self.defaultValue = 0
+        self.defaultValue = ''
         self.enumValues = []
         self.writeConstraint = ''  # enum or range
         self.range_min = None
@@ -151,10 +172,30 @@ class St_Field:
             for e in self.enumValues:
                 inst_str += '\t'+e.get_inst_str()+'\n'
         return inst_str
+    
+    def toJson(self):
+        json_str = '{\n' f'"name": "{self.name}","description": "{self.description}","bitOffset": {self.bitOffset}, "bitWidth": {self.bitWidth},"access": "{self.access}","defaultValue": "{self.defaultValue}"'
+        json_str += f',"writeConstraint": "{self.writeConstraint}","hdl_path": "{self.hdl_path}"'
+        if self.writeConstraint == 'enumerated':
+            if self.enumValues:
+                json_str += ',"enumValues": [\n'
+                for e in self.enumValues:
+                    json_str += e.toJson() + '\n'
+                    pass
+                json_str += '\n]'
+                pass
+            pass
+        elif self.writeConstraint == 'range':
+            if self.range_max and self.range_min:
+                json_str += ',"range": {\n' + f'"minimum": "{self.range_min}","maximum": "{self.range_max}"' + '\n}'
+                pass
+            pass
+        json_str += '\n}'
+        return json_str
 
 
 class St_Register:
-    def __init__(self, name:str, access:str, size=32):
+    def __init__(self, name:str, access:str, size = 32):
         self.name = name
         self.dim = 0
         self.dimIncrement = 0
@@ -185,6 +226,25 @@ class St_Register:
         for e in self.fields:
             inst_str += '\t'+e.get_inst_str()+'\n'
         return inst_str
+    
+    def toJson(self):
+        json_str = '{\n' f'"name": "{self.name}","dim": {self.dim},"dimIncrement": {self.dimIncrement}, "dimName": "{self.dimName}","description": "{self.description}","headRegisterName": "{self.headRegisterName}"'
+        json_str += f',"alternateRegister": "{self.alternateRegister}","alternateGroupName": "{self.alternateGroupName}","addressOffset": "{self.addressOffset}","size": {self.size},"access": "{self.access}"'
+        json_str += f',"resetValue": "{self.resetValue}","resetMask": "{self.resetMask}","hdl_path": "{self.hdl_path}"'
+        if self.fields:
+            bFristFd = True
+            json_str += ',"fields": [\n'
+            for f in self.fields:
+                if not bFristFd:
+                    json_str += ','
+                    pass
+                json_str += f.toJson() + '\n'
+                bFristFd = False
+                pass
+            json_str += '\n]'
+            pass
+        json_str += '\n}'
+        return json_str
 
 
 class St_Cluster:
@@ -209,6 +269,47 @@ class St_Cluster:
         for e in self.clusters:
             inst_str += '\t'+e.get_inst_str()+'\n'
         return inst_str
+    
+    def toJson(self):
+        json_str = '{\n' f'"name": "{self.name}","dim": {self.dim},"dimIncrement": {self.dimIncrement}, "dimName": "{self.dimName}","description": "{self.description}","headerStructName": "{self.headerStructName}"'
+        json_str += f',"alternateCluster": "{self.alternateCluster}","alternateGroupName": "{self.alternateGroupName}"'
+        if self.clusters:
+            clu_lst = []
+            reg_lst = []
+            for item in self.clusters:
+                if isinstance(item,St_Cluster):
+                    clu_lst.append(item)
+                    pass
+                elif isinstance(item,St_Register):
+                    reg_lst.append(item)
+                    pass
+            if clu_lst:
+                bFristClu = True
+                json_str += ',"clusters": [\n'
+                for c in clu_lst:
+                    if not bFristClu:
+                        json_str += ','
+                        pass
+                    json_str += c.toJson() + '\n'
+                    bFristClu = False
+                    pass
+                json_str += '\n]'
+                pass
+            if reg_lst:
+                bFristReg = True
+                json_str += ',"registers": [\n'
+                for r in reg_lst:
+                    if not bFristReg:
+                        json_str += ','
+                        pass
+                    json_str += r.toJson() + '\n'
+                    bFristReg = False
+                    pass
+                json_str += '\n]'
+                pass
+            pass
+        json_str += '\n}'
+        return json_str
 
 
 class St_Peripheral:
@@ -220,13 +321,13 @@ class St_Peripheral:
         self.prefixToName = ''
         self.suffixToName = ''
         self.moduleName = ''
-        self.InstanceName = ''
+        self.instanceName = ''
         self.description = ''
         self.busInterface = ''
         self.headerStructName = ''
         self.baseAddress = ''
         self.addrDerivedFrom = ''
-        self.offset = ''
+        self.addressOffset = ''
         self.addrBlocksRowindex = 0
         self.addressBlocks = []
         self.interuptsRowindex = 0
@@ -235,7 +336,7 @@ class St_Peripheral:
 
     def get_inst_str(self):
         inst_str = 'Peripheral: \n'
-        inst_str += f'name:{self.name}, derivedFrom:{self.derivedFrom},proc:{self.processor},alias:{self.aliasPeripheral},moduleName:{self.moduleName},instName:{self.InstanceName},hStructName:{
+        inst_str += f'name:{self.name}, derivedFrom:{self.derivedFrom},proc:{self.processor},alias:{self.aliasPeripheral},moduleName:{self.moduleName},instName:{self.instanceName},hStructName:{
             self.headerStructName},prefix:{self.prefixToName},suffix:{self.suffixToName},addrBlocks:{self.addrBlocksRowindex},interupt:{self.interuptsRowindex},desc:{self.description}\n'
         for adb in self.addressBlocks:
             inst_str += '\t'+adb.get_inst_str()+'\n'
@@ -245,9 +346,73 @@ class St_Peripheral:
     
     def getAddrStr(self):
         addr_str = self.baseAddress
-        if self.addrDerivedFrom and self.offset:
-            addr_str = self.addrDerivedFrom + ' + '+ self.offset
+        if self.addrDerivedFrom and self.addressOffset:
+            addr_str = self.addrDerivedFrom + ' + '+ self.addressOffset
         return addr_str
+    
+    def toJson(self):
+        json_str = '{\n' f'"name": "{self.name}","derivedFrom": "{self.derivedFrom}","processor": "{self.processor}", "aliasPeripheral": "{self.aliasPeripheral}","prefixToName": "{self.prefixToName}","suffixToName": "{self.suffixToName}"'
+        json_str += f',"moduleName": "{self.moduleName}","instanceName": "{self.instanceName}","description": "{self.description}","busInterface": "{self.busInterface}","headerStructName": "{self.headerStructName}"'
+        json_str += f',"baseAddress": "{self.baseAddress}","addrDerivedFrom": "{self.addrDerivedFrom}","addressOffset": "{self.addressOffset}"'
+        if self.addressBlocks:
+            json_str += ',"addressBlocks": [\n'
+            bNotFirst = False
+            for a in self.addressBlocks:
+                if bNotFirst:
+                    json_str += ','
+                json_str += a.toJson()
+                bNotFirst = True
+                pass
+            json_str += '\n]'
+        if self.interrupts:
+            json_str += ',"interupts": [\n'
+            bNotFirst = False
+            for i in self.interrupts:
+                if bNotFirst:
+                    json_str += ','
+                json_str += i.toJson()
+                bNotFirst = True
+                pass
+            json_str += '\n]'
+        if not self.derivedFrom:
+            # 不需要另外生成寄存器等信息
+            if self.clust_reg_lst:
+                clu_lst = []
+                reg_lst = []
+                for item in self.clust_reg_lst:
+                    if isinstance(item,St_Cluster):
+                        clu_lst.append(item)
+                        pass
+                    elif isinstance(item,St_Register):
+                        reg_lst.append(item)
+                        pass
+                if clu_lst:
+                    bFristClu = True
+                    json_str += ',"clusters": [\n'
+                    for c in clu_lst:
+                        if not bFristClu:
+                            json_str += ','
+                            pass
+                        json_str += c.toJson() + '\n'
+                        bFristClu = False
+                        pass
+                    json_str += '\n]'
+                    pass
+                if reg_lst:
+                    bFristReg = True
+                    json_str += ',"registers": [\n'
+                    for r in reg_lst:
+                        if not bFristReg:
+                            json_str += ','
+                            pass
+                        json_str += r.toJson() + '\n'
+                        bFristReg = False
+                        pass
+                    json_str += '\n]'
+                    pass
+                pass
+        json_str += '\n}'
+        return json_str
 
 
 class St_Device:
@@ -261,7 +426,7 @@ class St_Device:
         self.width = 32
         self.memories = []
         self.peripherals = {}
-        self.interupts = set()
+        self.interrupts = set()
 
     def get_inst_str(self):
         inst_str = 'Device: \n'
@@ -272,6 +437,53 @@ class St_Device:
         for mem in self.memories:
             inst_str += '\t'+mem.get_inst_str()+'\n'
         return inst_str
+    def toJson(self):
+        json_str = '{\n' f'"name": "{self.name}","vendor": "{self.vendor}","version": "{self.version}", "series": "{self.series}","description": "{self.description}","width": {self.width}'
+        if self.cpus:
+            json_str += ',"cpus": [\n'
+            bNotFirst = False
+            for c in self.cpus:
+                if bNotFirst:
+                    json_str += ','
+                json_str += c.toJson()
+                bNotFirst = True
+                pass
+            json_str += '\n]'
+        if self.memories:
+            json_str += ',"memories": [\n'
+            bNotFirst = False
+            for m in self.memories:
+                if bNotFirst:
+                    json_str += ','
+                json_str += m.toJson()
+                bNotFirst = True
+                pass
+            json_str += '\n]'
+        # if self.interrupts:
+        #     json_str += ',"interupts": [\n'
+        #     bNotFirst = False
+        #     for i in self.interrupts:
+        #         if bNotFirst:
+        #             json_str += ','
+        #         json_str += i.toJson()
+        #         bNotFirst = True
+        #         pass
+        #     json_str += '\n]'
+        if self.peripherals:
+            json_str += ',"peripherals": [\n'
+            bNotFirst = False
+            for p in self.peripherals:
+                plst = self.peripherals[p]
+                if plst:
+                    for p_p in plst:
+                        if bNotFirst:
+                            json_str += ','
+                        json_str += p_p.toJson()
+                        bNotFirst = True
+                pass
+            json_str += '\n]'
+        json_str += '\n}'
+        return json_str
 
 
 class St_ClusterInnerRange:
@@ -413,8 +625,10 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
                         if perip.name == derivedFrom:
                             st_perip = copy.copy(perip)
                             break
-            st_perip.aliasPeripheral = alias
-            st_perip.derivedFrom = derivedFrom
+            if alias:
+                st_perip.aliasPeripheral = alias
+            if derivedFrom:
+                st_perip.derivedFrom = derivedFrom
             st_perip.name = name
 
             addrDFrom = ws.cell(row, 3).value
@@ -425,7 +639,7 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
                 st_perip.baseAddress = baseAddr
             offset = ws.cell(row,5).value
             if offset:
-                st_perip.offset = offset
+                st_perip.addressOffset = offset
             processor = ws.cell(row, 6).value
             if processor:
                 st_perip.processor = processor
@@ -440,7 +654,7 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
                 st_perip.moduleName = mod_name
             inst_Name = ws.cell(row, 9).value
             if inst_Name:
-                st_perip.InstanceName = inst_Name
+                st_perip.instanceName = inst_Name
             busInf = ws.cell(row,10).value
             if busInf:
                 st_perip.busInterface = busInf
@@ -710,22 +924,42 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                     # print(regFd_col_dict)
                 else:
                     offset = ws.cell(row, reg_col_dict['addressOffset']).value
-                    size = ws.cell(row, reg_col_dict['size']).value
+                    r_size = ws.cell(row, reg_col_dict['size']).value
+                    if r_size:
+                        if isinstance(r_size,str):
+                            r_size = int(r_size)
+                    size = 32
+                    if isinstance(r_size,int):
+                        size = r_size
                     access = ws.cell(row, reg_col_dict['access']).value
                     cur_st_reg = St_Register(name, access, size)
                     cur_st_reg.addressOffset = offset
                     addrOffset = int(offset[2:], 16)
-                    cur_st_reg.resetValue = ws.cell(row, reg_col_dict['resetValue']).value
-                    cur_st_reg.resetMask = ws.cell(row, reg_col_dict['resetMask']).value
-                    cur_st_reg.headRegisterName = ws.cell(row, reg_col_dict['headRegisterName']).value
-                    cur_st_reg.alternateRegister = ws.cell(row, reg_col_dict['alternateRegister']).value
-                    cur_st_reg.alternateGroupName = ws.cell(row, reg_col_dict['alternateGroupName']).value
-                    cur_st_reg.dim = ws.cell(row, reg_col_dict['dim']).value
+                    resetValue = ws.cell(row, reg_col_dict['resetValue']).value
+                    if resetValue:
+                        cur_st_reg.resetValue = resetValue
+                    resetMask = ws.cell(row, reg_col_dict['resetMask']).value
+                    if resetMask:
+                        cur_st_reg.resetMask = resetMask
+                    headRegisterName = ws.cell(row, reg_col_dict['headRegisterName']).value
+                    if headRegisterName:
+                        cur_st_reg.headRegisterName = headRegisterName
+                    alternateRegister = ws.cell(row, reg_col_dict['alternateRegister']).value
+                    if alternateRegister:
+                        cur_st_reg.alternateRegister = alternateRegister
+                    alternateGroupName = ws.cell(row, reg_col_dict['alternateGroupName']).value
+                    if alternateGroupName:
+                        cur_st_reg.alternateGroupName = alternateGroupName
+                    dim = ws.cell(row, reg_col_dict['dim']).value
+                    if dim: 
+                        cur_st_reg.dim = dim
                     dimIncrement = ws.cell(row, reg_col_dict['dimIncrement']).value
                     if isinstance(dimIncrement,str):
                         dimIncrement = int (dimIncrement)
-                    cur_st_reg.dimIncrement = dimIncrement
-                    cur_st_reg.dimName = ws.cell(row, reg_col_dict['dimName']).value
+                        cur_st_reg.dimIncrement = dimIncrement
+                    dimName = ws.cell(row, reg_col_dict['dimName']).value
+                    if dimName:
+                        cur_st_reg.dimName = dimName
                     desc = ws.cell(row, reg_col_dict['description']).value
                     if desc:
                         cur_st_reg.description = desc
@@ -781,17 +1015,22 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                     fd.bitOffset = offset
                     fd.bitWidth = bitWidth
                     fd.access = access
-                    fd.defaultValue = defaultVal
-                    fd.writeConstraint = writeConstraint
-                    fd.range_min = range_min
-                    fd.range_max = range_max
+                    if defaultVal:
+                        fd.defaultValue = defaultVal
+                    if writeConstraint:
+                        fd.writeConstraint = writeConstraint
+                    if range_min:
+                        fd.range_min = range_min
+                    if range_max:
+                        fd.range_max = range_max
                     if hdl_path:
                         fd.hdl_path = hdl_path
                     if desc:
                         fd.description = desc
                     if enumName and enumVal:
                         enum_item = St_Enum_Val(enumName, enumVal)
-                        enum_item.desc = enumDesc
+                        if enumDesc:
+                            enum_item.desc = enumDesc
                         fd.enumValues.append(enum_item)
                     # 这里可能需要添加按顺序插入动作
                     binsertFd = False
@@ -818,7 +1057,8 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                     enumDesc = ws.cell(row, regFd_col_dict['enumDescription']).value
                     if enumName and enumVal:
                         enum_item = St_Enum_Val(enumName, enumVal)
-                        enum_item.desc = enumDesc
+                        if enumDesc:
+                            enum_item.desc = enumDesc
                         cur_reg_fd.enumValues.append(enum_item)
 
         row += 1
@@ -866,29 +1106,44 @@ def readCluster(ws: worksheet, parent_clu_reg_list, clu_range: St_ClusterInnerRa
             row += 1
             break
         else:
-            st_clu = St_Cluster(name)
-            st_clu.rowStart = clu_start
-            st_clu.rowEnd = clu_end
-            st_clu.addressOffset = ws.cell(row, cluster_col_dict['addressOffset']).value
-            addrOffset = int(st_clu.addressOffset[2:], 16)
-            st_clu.alternateCluster = ws.cell(row, cluster_col_dict['alternateCluster']).value
-            st_clu.alternateGroupName = ws.cell(row, cluster_col_dict['alternateGroupName']).value
-            st_clu.headerStructName = ws.cell(row, cluster_col_dict['headerStructName']).value
-            st_clu.dim = ws.cell(row, cluster_col_dict['dim']).value
-            st_clu.dimIncrement = ws.cell(row, cluster_col_dict['dimIncrement']).value
-            st_clu.description = ws.cell(row, cluster_col_dict['description']).value
-            if parent_clu_reg_list:
-                i = 0
-                for clu_reg in parent_clu_reg_list:
-                    offset = int(clu_reg.addressOffset[2:], 16)
-                    if offset > addrOffset:
-                        parent_clu_reg_list.insert(i, st_clu)
-                        break
-                    i += 1
-                if i == len(parent_clu_reg_list):
+            addressOffset = ws.cell(row, cluster_col_dict['addressOffset']).value
+            if addressOffset:
+                st_clu = St_Cluster(name)
+                st_clu.rowStart = clu_start
+                st_clu.rowEnd = clu_end
+                st_clu.addressOffset = addressOffset
+                addrOffset = int(st_clu.addressOffset[2:], 16)
+                alternateCluster = ws.cell(row, cluster_col_dict['alternateCluster']).value
+                if alternateCluster:
+                    st_clu.alternateCluster = alternateCluster
+                alternateGroupName = ws.cell(row, cluster_col_dict['alternateGroupName']).value
+                if alternateGroupName:
+                    st_clu.alternateGroupName = alternateGroupName
+                headerStructName = ws.cell(row, cluster_col_dict['headerStructName']).value
+                if headerStructName:
+                    st_clu.headerStructName = headerStructName
+                dim = ws.cell(row, cluster_col_dict['dim']).value
+                if dim:
+                    st_clu.dim = dim
+                dimIncrement = ws.cell(row, cluster_col_dict['dimIncrement']).value
+                if dimIncrement:
+                    st_clu.dimIncrement = dimIncrement
+                description = ws.cell(row, cluster_col_dict['description']).value
+                if description:
+                    st_clu.description = description
+                if parent_clu_reg_list:
+                    i = 0
+                    for clu_reg in parent_clu_reg_list:
+                        offset = int(clu_reg.addressOffset[2:], 16)
+                        if offset > addrOffset:
+                            parent_clu_reg_list.insert(i, st_clu)
+                            break
+                        i += 1
+                    if i == len(parent_clu_reg_list):
+                        parent_clu_reg_list.append(st_clu)
+                else:
                     parent_clu_reg_list.append(st_clu)
-            else:
-                parent_clu_reg_list.append(st_clu)
+                pass
         row += 1
     return parent_clu_reg_list, row, bError
 
@@ -1086,8 +1341,8 @@ extern "C"
         irq_str = ''
         irq_num_str = ''
         index = 0 
-        irCount = len(dev.interupts) 
-        for ir in dev.interupts:
+        irCount = len(dev.interrupts) 
+        for ir in dev.interrupts:
             index += 1
             if isinstance(ir,St_Interrupt):
                 emIr= cst_tab_str+f'{ir.name}'
@@ -2231,11 +2486,21 @@ def getRegFieldInfo(accessDict,tab_str, uint_dict, clu_reg: St_Register ,moduleN
 def checkDeviceSheet(ws):
     name = ws['B3'].value
     st_dev = St_Device(name)
-    st_dev.vendor = ws['B2'].value
-    st_dev.version = ws['B4'].value
-    st_dev.series = ws['B5'].value
-    st_dev.width = ws['B6'].value
-    st_dev.description = ws['B7'].value
+    vendor = ws['B2'].value
+    if vendor:
+        st_dev.vendor = vendor 
+    version = ws['B4'].value
+    if version:
+        st_dev.version = version 
+    series = ws['B5'].value 
+    if series:
+        st_dev.series = series
+    width = ws['B6'].value
+    if width:
+        st_dev.width = width
+    desc = ws['B7'].value
+    if desc: 
+        st_dev.description = desc
 
     row = 9
     mem_row_pos = cpu_row_pos = 0
@@ -2278,7 +2543,9 @@ def checkDeviceSheet(ws):
                 l2cache = ws.cell(row_i,cpu_col_dict['l2cachePresent']).value
                 if cpu_name and revision and endian:
                     st_cpu = St_CPU(cpu_name)
-                    st_cpu.derivedFrom = ws.cell(row_i, cpu_col_dict['derivedFrom']).value
+                    derivedFrom = ws.cell(row_i, cpu_col_dict['derivedFrom']).value
+                    if derivedFrom: 
+                        st_cpu.derivedFrom = derivedFrom
                     st_cpu.revision = revision
                     st_cpu.endian = endian
                     if isinstance(srs,str) :
@@ -2359,13 +2626,17 @@ def checkDeviceSheet(ws):
                 usage = ws.cell(row_i, mem_col_dict['usage']).value
                 if mem_name and addrbase and addrOffset and addrOffset and size and access and usage:
                     st_mem = St_Memory(mem_name)
-                    st_mem.derivedFrom = ws.cell(row_i, mem_col_dict['derivedFrom']).value
+                    derivedFrom = ws.cell(row_i, mem_col_dict['derivedFrom']).value
+                    if derivedFrom:
+                        st_mem.derivedFrom = derivedFrom
                     st_mem.baseAddress = addrbase
                     st_mem.addressOffset = addrOffset
                     st_mem.size = size
                     st_mem.access = access
                     st_mem.usage = usage
-                    st_mem.processor = ws.cell(row_i, mem_col_dict['processor']).value
+                    processor = ws.cell(row_i, mem_col_dict['processor']).value
+                    if processor:
+                        st_mem.processor = processor
                     desc = ws.cell(row_i, mem_col_dict['description']).value
                     if desc:
                         st_mem.description = desc
@@ -2402,16 +2673,15 @@ def dealwith_excel(xls_file, outFlag=1):
                     module_file_lst.append(mod_file)
                 st_dev.peripherals[sh_name] = perip_lst
                 if irq_set and isinstance(irq_set,set):
-                    st_dev.interupts.update(irq_set)
-                # dev_json = json.JSONEncoder().encode(st_dev)
-                # with open('./dev.json', 'w+') as out_file: 
-                #     out_file.write(dev_json)
+                    st_dev.interrupts.update(irq_set)
+                with open('./dev.json', 'w+') as f: 
+                     f.write(st_dev.toJson())
                 
 
     if checkErr:
         filename = os.path.basename(xls_file)
         # out_mark_xlsx_file = filename.replace('.xlsx', '_errMk.xlsx')
-        print("Check Failed. Please review "+filename+" and fix it.")
+        print("Check Failed. Please review "+ filename + " and fix it.")
         # wb.save(out_mark_xlsx_file)
     else:
         if outFlag == 2:
