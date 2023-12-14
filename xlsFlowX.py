@@ -179,8 +179,13 @@ class St_Field:
         if self.writeConstraint == 'enumerated':
             if self.enumValues:
                 json_str += ',"enumValues": [\n'
+                bFirstEnum = True
                 for e in self.enumValues:
+                    if not bFirstEnum:
+                        json_str += ','
+                        pass
                     json_str += e.toJson() + '\n'
+                    bFirstEnum = False
                     pass
                 json_str += '\n]'
                 pass
@@ -235,6 +240,8 @@ class St_Register:
             bFristFd = True
             json_str += ',"fields": [\n'
             for f in self.fields:
+                if f.name.upper() == 'RESERVED': #Reserved
+                    continue
                 if not bFristFd:
                     json_str += ','
                     pass
@@ -299,6 +306,8 @@ class St_Cluster:
                 bFristReg = True
                 json_str += ',"registers": [\n'
                 for r in reg_lst:
+                    if r.name.upper() == 'RESERVED':
+                        continue
                     if not bFristReg:
                         json_str += ','
                         pass
@@ -402,6 +411,8 @@ class St_Peripheral:
                     bFristReg = True
                     json_str += ',"registers": [\n'
                     for r in reg_lst:
+                        if r.name.upper() == 'RESERVED':
+                            continue
                         if not bFristReg:
                             json_str += ','
                             pass
