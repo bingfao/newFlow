@@ -43,6 +43,9 @@ accessDict = {'R': '__I ', 'W': '__O ', 'RW': '__IO'}
 uint_dict = {8: 'uint8_t', 16: 'uint16_t',
                          32: 'uint32_t', 64: 'uint64_t'}
 
+ubitSize_bytes_dict = {8: '1', 16: '2',
+                         32: '4', 64: '8'}
+
 
 cst_HEXValue_StringSize = 10
 cst_emIRQ_SpaceSize = 20
@@ -538,11 +541,12 @@ def markCell_InvalidFunc(ws, cellstr, clr='ff0000'):
 def isHexString(strVal, b0xStart=True):
     strUpper = strVal.upper()
     brt = True
+    strhex = strUpper
     if b0xStart:
         brt = strUpper.startswith('0X')
+        strhex = strUpper[2:]
     hexstr = '0123456789ABCDEF'
     if brt:
-        strhex = strUpper[2:]
         for c in strhex:
             if c not in hexstr:
                 brt = False
@@ -945,7 +949,8 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                     access = ws.cell(row, reg_col_dict['access']).value
                     cur_st_reg = St_Register(name, access, size)
                     cur_st_reg.addressOffset = offset
-                    addrOffset = int(offset[2:], 16)
+                    #addrOffset = int(offset[2:], 16)
+                    addrOffset = int(offset, 16)
                     resetValue = ws.cell(row, reg_col_dict['resetValue']).value
                     if resetValue:
                         cur_st_reg.resetValue = resetValue
@@ -1059,9 +1064,11 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                     enumName = ws.cell(row, regFd_col_dict['enumName']).value
                     enumVal = ws.cell(row, regFd_col_dict['enumValue']).value
                     if isHexString(enumVal):
-                        nEnumVal = int(enumVal[2:],16)
+                        #nEnumVal = int(enumVal[2:],16)
+                        nEnumVal = int(enumVal,16)
                         bitMask = bitWidMask_arr[fd.bitWidth-1]
-                        nBitMask = int(bitMask[2:],16)
+                        #nBitMask = int(bitMask[2:],16)
+                        nBitMask = int(bitMask,16)
                         if nEnumVal >  nBitMask:
                             print(f'Error: In Register Field enum value extends the bitRange at  Row {row}')
                             bError = True
@@ -1124,7 +1131,8 @@ def readCluster(ws: worksheet, parent_clu_reg_list, clu_range: St_ClusterInnerRa
                 st_clu.rowStart = clu_start
                 st_clu.rowEnd = clu_end
                 st_clu.addressOffset = addressOffset
-                addrOffset = int(st_clu.addressOffset[2:], 16)
+                #addrOffset = int(st_clu.addressOffset[2:], 16)
+                addrOffset = int(st_clu.addressOffset, 16)
                 alternateCluster = ws.cell(row, cluster_col_dict['alternateCluster']).value
                 if alternateCluster:
                     st_clu.alternateCluster = alternateCluster
@@ -1146,7 +1154,8 @@ def readCluster(ws: worksheet, parent_clu_reg_list, clu_range: St_ClusterInnerRa
                 if parent_clu_reg_list:
                     i = 0
                     for clu_reg in parent_clu_reg_list:
-                        offset = int(clu_reg.addressOffset[2:], 16)
+                        #offset = int(clu_reg.addressOffset[2:], 16)
+                        offset = int(clu_reg.addressOffset, 16)
                         if offset > addrOffset:
                             parent_clu_reg_list.insert(i, st_clu)
                             break
@@ -1252,6 +1261,9 @@ def readCluster(ws: worksheet, parent_clu_reg_list, clu_range: St_ClusterInnerRa
 
 #         return out_svh_file_name
 
+
+def output_C_dev_InOneFile(dev: St_Device):
+    pass
 
 def output_C_devFile(dev: St_Device,module_file_lst:list):
     devName = dev.name.lower()
@@ -1683,6 +1695,54 @@ typedef void (*irqFnHandler)(void *);
     pass
 
 
+def output_ralf_moduleFile(preip_lst,preip_name,version: str):
+    preip_inst = None
+    if preip_lst:
+        preip_inst = preip_lst[0]
+        if isinstance(preip_inst,St_Peripheral):
+            out_ralf_file_Name = preip_name.lower()
+            module_Name = preip_inst.moduleName
+            preip_name = preip_name.upper()
+            out_file_name = out_ralf_file_Name+'.ralf'
+            out_file_Pathname = './ralf/'+out_file_name
+            with open(out_file_Pathname, 'w+') as out_file:
+                fileHeader = f' # @file    {out_file_name}\n'
+                fileHeader += f' # @author  CIP Application Team\n # @brief   {preip_name} Register struct Header File.\n'
+                fileHeader += ' #          This file contains:\n #           - Data structures and the address mapping for\n'
+                fileHeader += f" #             {preip_name} peripherals\n #           - Including peripheral's registers declarations and bits\n"
+                fileHeader += ' #             definition\n'
+
+                # 格式化成2016-03-20 11:45:39形式
+                today = date.today()
+                fileHeader += f' # @version {version} \n # @date    {today.strftime("%y-%m-%d")}\n'
+
+
+                fileHeader += f' # <h2><center>&copy; Copyright (c){today.year} CIP United Co.\n'
+                fileHeader += """
+ # All rights reserved.</center></h2>
+ #
+
+"""
+                
+
+                clu_reg_str_info = getCluRegStructInfo_Ralf(preip_inst.clust_reg_lst, module_Name,0)
+                fileHeader += clu_reg_str_info
+          
+                # perip_inst_lst=[]
+                # for p in  preip_lst:
+                #     if not p.aliasPeripheral:
+                #         perip_inst_lst.append(p)
+                
+                # for p in perip_inst_lst:
+                #     inst_name=p.name.upper()
+                #     fileHeader+=f'#define  {inst_name}_BASE_ADDR          {inst_name}_BASE\n'
+
+                
+                out_file.write(fileHeader)
+
+                return out_file_Pathname
+    pass
+
 def output_C_moduleFile(preip_lst, preip_name, version):
     preip_inst = None
     
@@ -1700,7 +1760,7 @@ def output_C_moduleFile(preip_lst, preip_name, version):
                 fileHeader += f' * @author  CIP Application Team\n * @brief   {preip_name} Register struct Header File.\n'
                 fileHeader += ' *          This file contains:\n *           - Data structures and the address mapping for\n'
                 fileHeader += f" *             {preip_name} peripherals\n *           - Including peripheral's registers declarations and bits\n"
-                fileHeader += '*             definition\n'
+                fileHeader += ' *             definition\n'
 
                 # 格式化成2016-03-20 11:45:39形式
                 today = date.today()
@@ -1772,7 +1832,7 @@ def output_C_moduleFile(preip_lst, preip_name, version):
             
                 #uint_str = 'uint32_t'
 
-                clu_reg_str_info,fileRegFdOpstr,nLastOffset = getCluRegStructInfo(preip_inst.clust_reg_lst, module_Name,0)
+                clu_reg_str_info,fileRegFdOpstr,nLastOffset = getCluRegStructInfo_C(preip_inst.clust_reg_lst, module_Name,0)
                 fileHeader += clu_reg_str_info
 
                 fileHeader += '}'+f' {module_Name}_t;\n\n#pragma pack()\n'
@@ -1879,8 +1939,109 @@ def output_C_moduleFile(preip_lst, preip_name, version):
                 out_file.write(fileHeader)
 
                 return out_file_Pathname
+            
+def getRegFieldInfo_Ralf(tab_str, clu_reg: St_Register):
+    regName = clu_reg.name.upper()
+    fileHeader = ''
+    if regName != 'RESERVED': #Reserved
+        fileHeader = tab_str+'register ' + clu_reg.name
+        if clu_reg.dim:
+            fileHeader += f'[{clu_reg.dim}]'
+        fileHeader += f' @{clu_reg.addressOffset} ' +'{\n'
+        nbytes = ubitSize_bytes_dict[clu_reg.size]
+        reg_tab_str =  tab_str + cst_tab_str
+        fileHeader += reg_tab_str + f'bytes  {nbytes};\n'
+        field_tab_str = tab_str + cst_tab_str + cst_tab_str
+        for fd in clu_reg.fields:
+            if isinstance(fd,St_Field):
+                fdName = fd.name.upper()
+                if fdName != 'RESERVED':
+                    fileHeader += reg_tab_str + f'field {fd.name} '
+                    if fd.hdl_path:
+                        fileHeader +=f' ({fd.hdl_path}) '
+                    fileHeader +=f' @{fd.bitOffset} ' + '{\n'
+                    fileHeader += field_tab_str + f'bits {fd.bitWidth};\n'
+                    # if fd.access == 'R':
+                    #     pass
+                    fileHeader += field_tab_str + f'reset {fd.defaultValue};\n'
+                    fdAccess = fd.access.lower()
+                    if fdAccess == 'r' or fdAccess == 'w':
+                        fdAccess += 'o'
+                    fileHeader += field_tab_str + f'access {fdAccess};\n'
+                    fileHeader += field_tab_str + f'constraint c_st_{regName}_{fd.name}'+ ' {\n'
+                    constraint_str = ''
+                    enum_str =''
+                    enum_val_str =''
+                    if fd.writeConstraint == 'enumerated':
+                        if fd.enumValues:
+                            enum_str += field_tab_str  + 'enum {\n'
+                            bFirstEnum = True
+                            for e in fd.enumValues:
+                                enum_str += field_tab_str + cst_tab_str
+                                if not bFirstEnum:
+                                    enum_str +=','
+                                    enum_val_str += ','
+                                    pass
+                                if isinstance(e,St_Enum_Val):
+                                    enum_str += f'{e.name} = {e.value}\n'
+                                    enum_val_str += f'\'h{e.value}'
+                                    pass 
+                                bFirstEnum = False
+                                pass
+                            enum_str += field_tab_str + cst_tab_str + '}\n'
+                            if len(fd.enumValues) == 1:
+                                constraint_str = field_tab_str + cst_tab_str + 'value = '+f'{enum_val_str}'+';\n'
+                                pass
+                            else:
+                                constraint_str = field_tab_str + cst_tab_str + 'value inside {'+f'{enum_val_str}'+'};\n'
+                            pass
+                        pass
+                    elif fd.writeConstraint == 'range':
+                        if fd.range_max and fd.range_min:
+                            constraint_str = field_tab_str + cst_tab_str + 'value inside { ['+f'\'h{fd.range_min}:\'h{fd.range_max}'+'] };\n'
+                            pass
+                        pass
+                    fileHeader += constraint_str
+                    fileHeader += field_tab_str + '};\n'
+                    fileHeader += reg_tab_str + '}; '
+                    if fd.description:
+                        fileHeader += f' #{fd.description}'
+                    fileHeader += '\n'
+                    pass
+                pass
+        fileHeader += tab_str +'}; '
+        if clu_reg.description:
+            fileHeader += f'# {clu_reg.description}'
+        fileHeader += '\n'
+    return fileHeader
+    
 
-def getCluRegStructInfo(clust_reg_lst, module_Name, nPLastOffset,nChild_level = 0):
+
+def getCluRegStructInfo_Ralf(clust_reg_lst, struct_Name, nChild_level = 0):
+    cst_newLine_tab_str= ''
+    for l in range(nChild_level):
+        cst_newLine_tab_str += cst_tab_str
+    if nChild_level == 0:
+        fileHeader = cst_newLine_tab_str+f'block {struct_Name}'+ ' {\n' + cst_newLine_tab_str + cst_tab_str +'bytes 4;\n'
+    else:
+        fileHeader = cst_newLine_tab_str+f'regfile {struct_Name}'+ ' {\n'
+    newLine_tab_str = cst_newLine_tab_str + cst_tab_str
+    
+    for clu_reg in clust_reg_lst:
+        if isinstance(clu_reg, St_Cluster):
+            clu_reg_str_info = getCluRegStructInfo_Ralf(clu_reg.clusters,clu_reg.name,nChild_level+1)
+            fileHeader += clu_reg_str_info
+            fileHeader += newLine_tab_str+'} ;\n'
+            pass
+        elif isinstance(clu_reg, St_Register):
+                regFdInfo = getRegFieldInfo_Ralf(newLine_tab_str,clu_reg)
+                fileHeader += regFdInfo        
+    if nChild_level == 0:
+        fileHeader += cst_newLine_tab_str + '} ; \n'
+    return fileHeader
+
+
+def getCluRegStructInfo_C(clust_reg_lst, struct_name, nPLastOffset,nChild_level = 0):
     cst_newLine_tab_str= ''
     for l in range(nChild_level):
         cst_newLine_tab_str += cst_tab_str
@@ -1898,17 +2059,12 @@ def getCluRegStructInfo(clust_reg_lst, module_Name, nPLastOffset,nChild_level = 
             if curGroupName:
                 fileHeader += newLine_tab_str+'} '+f'{curGroupName};\n'
                 curGroupName = ''
-            clu_reg_str_info, clu_reg_Op_str,nLastOffset = getCluRegStructInfo(clu_reg.clusters,module_Name,nLastOffset,nChild_level+1)
+            clu_reg_str_info, clu_reg_Op_str,nLastOffset = getCluRegStructInfo_C(clu_reg.clusters,struct_name,nLastOffset,nChild_level+1)
             fileHeader += clu_reg_str_info
             fileRegFdOpstr += clu_reg_Op_str
             fileHeader += newLine_tab_str+'} '+f'{clu_reg.name};\n'
             pass
         elif isinstance(clu_reg, St_Register):
-            # uint_str = 'uint32_t'
-            # if clu_reg.size in uint_dict:
-            #     uint_str = uint_dict[clu_reg.size]
-            # regName = clu_reg.getRegName().upper()
-            # print(f'reg: {clu_reg.name}')
             if clu_reg.alternateGroupName:
                 union_str = ''
                 if curGroupName != clu_reg.alternateGroupName:
@@ -1916,7 +2072,7 @@ def getCluRegStructInfo(clust_reg_lst, module_Name, nPLastOffset,nChild_level = 
                         fileHeader += newLine_tab_str+'} '+f'{curGroupName};\n'
                     union_str = newLine_tab_str+'union {\n'
                     curGroupName = clu_reg.alternateGroupName
-                offsetInfo,regFdInfo,regFdOpstr,nRegReservedIndex,nLastOffset = getRegFieldInfo(accessDict,newLine_tab_str, uint_dict, clu_reg,module_Name,nRegReservedIndex,nLastOffset)
+                offsetInfo,regFdInfo,regFdOpstr,nRegReservedIndex,nLastOffset = getRegFieldInfo_C(newLine_tab_str, clu_reg,struct_name,nRegReservedIndex,nLastOffset)
                 fileHeader += offsetInfo
                 fileHeader += union_str
                 fileHeader += regFdInfo
@@ -1925,7 +2081,7 @@ def getCluRegStructInfo(clust_reg_lst, module_Name, nPLastOffset,nChild_level = 
                 if curGroupName:
                     fileHeader +=  newLine_tab_str+'} '+f'{curGroupName};\n'
                     curGroupName = ''
-                offsetInfo,regFdInfo,regFdOpstr,nRegReservedIndex,nLastOffset = getRegFieldInfo(accessDict,cst_newLine_tab_str,uint_dict,clu_reg,module_Name,nRegReservedIndex,nLastOffset)
+                offsetInfo,regFdInfo,regFdOpstr,nRegReservedIndex,nLastOffset = getRegFieldInfo_C(cst_newLine_tab_str, clu_reg,struct_name,nRegReservedIndex,nLastOffset)
                 fileHeader += offsetInfo
                 fileHeader += regFdInfo
                 fileRegFdOpstr += regFdOpstr
@@ -1933,7 +2089,7 @@ def getCluRegStructInfo(clust_reg_lst, module_Name, nPLastOffset,nChild_level = 
 
 
 
-def getRegFieldInfo(accessDict,tab_str, uint_dict, clu_reg: St_Register ,moduleName,nRegReservedIndex, nLastOffset):
+def getRegFieldInfo_C(tab_str, clu_reg: St_Register ,moduleName,nRegReservedIndex, nLastOffset):
     # 需要增加 dim 部分的处理逻辑
     fileHeader = ''
     retOpstr = f'/**\n * @name {clu_reg.name} - {clu_reg.description}, Offset: {clu_reg.addressOffset}\n * @'+'{\n */\n'
@@ -2683,6 +2839,7 @@ def dealwith_excel(xls_file, outFlag=1):
                 if outFlag == 1:
                     mod_file =output_C_moduleFile(perip_lst, sh_name, st_dev.version)
                     module_file_lst.append(mod_file)
+                    output_ralf_moduleFile(perip_lst,sh_name,st_dev.version)
                 st_dev.peripherals[sh_name] = perip_lst
                 if irq_set and isinstance(irq_set,set):
                     st_dev.interrupts.update(irq_set)
