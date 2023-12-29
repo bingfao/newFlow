@@ -1694,6 +1694,54 @@ typedef void (*irqFnHandler)(void *);
         out_file.write(fileHeader)
     pass
 
+def output_uvm_sv_moduleFile(preip_lst,preip_name,version: str):
+    preip_inst = None
+    if preip_lst:
+        preip_inst = preip_lst[0]
+        if isinstance(preip_inst,St_Peripheral):
+            out_ralf_file_Name = preip_name.lower()
+            module_Name = preip_inst.moduleName
+            preip_name = preip_name.upper()
+            out_file_name = out_ralf_file_Name+'.sv'
+            out_file_Pathname = './uvm/'+out_file_name
+            with open(out_file_Pathname, 'w+') as out_file:
+                fileHeader = f' /* @file    {out_file_name}\n'
+                fileHeader += f' * @author  CIP Application Team\n # @brief   {preip_name} Register struct Header File.\n'
+                fileHeader += ' *          This file contains:\n #           - Data structures and the address mapping for\n'
+                fileHeader += f" *             {preip_name} peripherals\n #           - Including peripheral's registers declarations and bits\n"
+                fileHeader += ' *             definition\n'
+
+                # 格式化成2016-03-20 11:45:39形式
+                today = date.today()
+                fileHeader += f' # @version {version} \n # @date    {today.strftime("%y-%m-%d")}\n'
+                fileHeader += """
+*
+******************************************************************************
+* @copyright
+*
+"""
+                fileHeader += f' *  <h2><center>&copy; Copyright (c){today.year} CIP United Co.\n'
+                fileHeader += """
+* All rights reserved.</center></h2>
+*
+* 
+*
+******************************************************************************
+
+*/
+"""
+                macro_name = f'RAL_MOD_{preip_name}'
+                fileHeader += f'`ifndef {macro_name}\n`define {macro_name}\n\n'
+                fileHeader += 'import uvm_pkg::*;\n\n'
+
+                block_name, clu_reg_str_info = getCluRegStructInfo_uvm_sv(preip_inst.clust_reg_lst, module_Name,module_Name,0)
+                fileHeader += clu_reg_str_info
+                # 增加 ral_sys_
+                fileHeader += f'\n`endif // {macro_name}' 
+                out_file.write(fileHeader)
+
+                return out_file_Pathname
+    pass
 
 def output_ralf_moduleFile(preip_lst,preip_name,version: str):
     preip_inst = None
@@ -1704,7 +1752,7 @@ def output_ralf_moduleFile(preip_lst,preip_name,version: str):
             module_Name = preip_inst.moduleName
             preip_name = preip_name.upper()
             out_file_name = out_ralf_file_Name+'.ralf'
-            out_file_Pathname = './ralf/'+out_file_name
+            out_file_Pathname = './uvm/'+out_file_name
             with open(out_file_Pathname, 'w+') as out_file:
                 fileHeader = f' # @file    {out_file_name}\n'
                 fileHeader += f' # @author  CIP Application Team\n # @brief   {preip_name} Register struct Header File.\n'
@@ -1728,15 +1776,6 @@ def output_ralf_moduleFile(preip_lst,preip_name,version: str):
                 clu_reg_str_info = getCluRegStructInfo_Ralf(preip_inst.clust_reg_lst, module_Name,0)
                 fileHeader += clu_reg_str_info
           
-                # perip_inst_lst=[]
-                # for p in  preip_lst:
-                #     if not p.aliasPeripheral:
-                #         perip_inst_lst.append(p)
-                
-                # for p in perip_inst_lst:
-                #     inst_name=p.name.upper()
-                #     fileHeader+=f'#define  {inst_name}_BASE_ADDR          {inst_name}_BASE\n'
-
                 
                 out_file.write(fileHeader)
 
@@ -1940,14 +1979,155 @@ def output_C_moduleFile(preip_lst, preip_name, version):
 
                 return out_file_Pathname
             
-def getRegFieldInfo_Ralf(tab_str, clu_reg: St_Register):
+def getHexStr(var):
+    if isinstance(var,int):
+        e_val = hex(var)
+        hxstr=hex(var)
+        return hxstr[2:].upper()
+    elif isinstance(var,str):
+        var_up = var.upper()
+        if var_up.startswith('0X'):
+            return var_up[2:]
+
+
+def getRegFieldInfo_uvm_sv(clu_reg: St_Register,moduleName:str,cluster_level = 0):
+    regName = clu_reg.name.upper()
+    cls_reg_str = ''
+    cls_constraint_str =''
+    cls_build_str = ''
+    cls_reg_name = ''
+    block_build_str = ''
+    if regName != 'RESERVED': #Reserved
+        reg_name = f'{moduleName}_{clu_reg.name}'
+        cls_reg_name = f'ral_reg_{reg_name}'
+        cls_reg_str = f'\nclass {cls_reg_name} extends uvm_reg;\n'
+        reg_tab_str =   cst_tab_str
+        field_tab_str =  cst_tab_str + cst_tab_str
+        hdl_path = ''
+        bfd_individually_accessible = 0
+        nUsefulFd = 0
+        for fd in clu_reg.fields:
+            if isinstance(fd,St_Field):
+                fdName = fd.name.upper()
+                if fdName != 'RESERVED':
+                    nUsefulFd += 1
+
+        if nUsefulFd == 1:
+            bfd_individually_accessible = 1
+        for fd in clu_reg.fields:
+            if isinstance(fd,St_Field):
+                fdName = fd.name.upper()
+                if fdName != 'RESERVED':
+                    fdAccess = fd.access.lower()
+                    if fdAccess == 'r' or fdAccess == 'w':
+                        fdAccess += 'o'
+                    if fdAccess.find('w') != -1:
+                        cls_reg_str += reg_tab_str + f'rand uvm_reg_field {fd.name};\n'
+                    else:
+                        cls_reg_str += reg_tab_str + f'uvm_reg_field {fd.name};\n'
+                    cls_build_str += field_tab_str + f'this.{fd.name} = uvm_reg_field::type_id::create("{fd.name}",,get_full_name());\n'
+                    cls_build_str += field_tab_str + f'this.{fd.name}.configure(this, {fd.bitWidth}, {fd.bitOffset}, "{fdAccess.upper()}", 0, {fd.bitWidth}\'h{getHexStr(fd.defaultValue)}, 1, 1, {bfd_individually_accessible});\n'
+
+                    cls_constraint_str += reg_tab_str + f'constraint {clu_reg.name}_cst_{fd.name}'+' {\n'
+                    constraint_str = ''
+                    enum_str =''
+                    enum_val_str =''
+                    if fd.writeConstraint == 'enumerated':
+                        if fd.enumValues:
+                            enum_str += field_tab_str  + 'enum {\n'
+                            bFirstEnum = True
+                            for e in fd.enumValues:
+                                enum_str += field_tab_str + cst_tab_str
+                                if not bFirstEnum:
+                                    enum_str +=','
+                                    enum_val_str += ','
+                                    pass
+                                if isinstance(e,St_Enum_Val):
+                                    enum_str += f'{e.name} = {e.value}\n'
+                                    # e_val = e.value
+                                    e_val = getHexStr(e.value)
+                                    enum_val_str += f'\'h{e_val}'
+                                    pass 
+                                bFirstEnum = False
+                                pass
+                            enum_str += field_tab_str + cst_tab_str + '}\n'
+                            if len(fd.enumValues) == 1:
+                                constraint_str = field_tab_str  + f'{fd.name}.value == {enum_val_str}'+';\n'
+                                pass
+                            else:
+                                constraint_str = field_tab_str  + f'{fd.name}'+ '.value inside {'+f'{enum_val_str}'+'};\n'
+                            pass
+                        pass
+                    elif fd.writeConstraint == 'range':
+                        if fd.range_max and fd.range_min:
+                            constraint_str = field_tab_str  + f'{fd.name}' + '.value inside { ['+f'\'h{getHexStr(fd.range_min)}:\'h{getHexStr(fd.range_max)}'+'] };\n'
+                            pass
+                        pass
+                    cls_constraint_str += constraint_str
+                    cls_constraint_str += reg_tab_str + '}\n'
+                    if fd.hdl_path:
+                        if hdl_path:
+                            hdl_path += ',\n'
+                        hdl_path += field_tab_str+'\'{"'+f'{fd.hdl_path}", {fd.bitOffset}, {fd.bitWidth}' + '}'
+                    # '{"U_DW_apb_uart_regfile.rbr[7:0]", 0, 8}
+                    pass
+                pass
+        cls_reg_str += cls_constraint_str
+        cls_reg_str += reg_tab_str + f'function new(string name = "{reg_name}");\n'    
+        cls_reg_str += field_tab_str + f'super.new(name, {clu_reg.size},build_coverage(UVM_NO_COVERAGE));\n'
+        cls_reg_str += reg_tab_str + 'endfunction: new\n'
+        cls_reg_str += reg_tab_str+ 'virtual function void build();\n'
+        cls_reg_str += cls_build_str
+        cls_reg_str += reg_tab_str+ 'endfunction: build\n\n'
+        cls_reg_str += reg_tab_str+ f'`uvm_object_utils({cls_reg_name})\n\n'
+        cls_reg_str +=  f'endclass : {cls_reg_name}\n'
+
+        reg_Access = clu_reg.access.upper()
+        if clu_reg.dim > 1:
+            block_build_str += field_tab_str + f'foreach (this.{regName}[i]) begin\n'
+            block_build_str += field_tab_str + cst_tab_str + f'this.{regName}[i] = {cls_reg_name}::type_id::create("{regName}",,get_full_name());\n'
+            if cluster_level:
+                block_build_str += field_tab_str + cst_tab_str + f'this.{regName}[i].configure(get_block(), this, "{clu_reg.hdl_path}");\n' 
+            else:
+                block_build_str += field_tab_str + cst_tab_str + f'this.{regName}[i].configure(this, null, "{clu_reg.hdl_path}");\n'
+            block_build_str += field_tab_str + cst_tab_str + f'this.{regName}[i].build();\n'
+            if hdl_path:
+                block_build_str += field_tab_str + cst_tab_str + f'this.{regName}[i].add_hdl_path('+'\'{\n'
+                block_build_str += hdl_path + '\n'
+                block_build_str += field_tab_str + cst_tab_str + '});\n' 
+            if cluster_level == 0 :
+                block_build_str += field_tab_str + cst_tab_str + f'this.default_map.add_reg(this.{regName}[i], `UVM_REG_ADDR_WIDTH\'h{getHexStr(clu_reg.addressOffset)}, "{reg_Access}", 0);\n'
+            else:
+                block_build_str += field_tab_str + cst_tab_str + f'this.get_topblock_map().add_reg(this.{regName}[i], `UVM_REG_ADDR_WIDTH\'h{getHexStr(clu_reg.addressOffset)}, "{reg_Access}", 0);\n'
+                pass
+            block_build_str += field_tab_str + 'end\n\n'               
+        else:
+            block_build_str += field_tab_str + f'this.{regName} = {cls_reg_name}::type_id::create("{regName}",,get_full_name());\n'
+            if cluster_level:
+                block_build_str += field_tab_str +  f'this.{regName}.configure(get_block(), this, "{clu_reg.hdl_path}");\n' 
+            else:
+                block_build_str += field_tab_str + f'this.{regName}.configure(this, null, "{clu_reg.hdl_path}");\n'
+            block_build_str += field_tab_str + f'this.{regName}.build();\n'
+            if hdl_path:
+                block_build_str += field_tab_str + f'this.{regName}.add_hdl_path('+'\'{\n'
+                block_build_str += hdl_path  + '\n'
+                block_build_str += field_tab_str + '});\n' 
+            if cluster_level ==0 :
+                block_build_str += field_tab_str + f'this.default_map.add_reg(this.{regName}, `UVM_REG_ADDR_WIDTH\'h{getHexStr(clu_reg.addressOffset)}, "{reg_Access}", 0);\n\n'
+            else:
+                block_build_str += field_tab_str +  f'this.get_topblock_map().add_reg(this.{regName}, `UVM_REG_ADDR_WIDTH\'h{getHexStr(clu_reg.addressOffset)}, "{reg_Access}", 0);\n'
+    
+    return cls_reg_name,block_build_str,cls_reg_str
+
+def getRegFieldInfo_Ralf(tab_str, clu_reg: St_Register,baseOffset:int):
     regName = clu_reg.name.upper()
     fileHeader = ''
     if regName != 'RESERVED': #Reserved
         fileHeader = tab_str+'register ' + clu_reg.name
         if clu_reg.dim:
             fileHeader += f'[{clu_reg.dim}]'
-        fileHeader += f' @{clu_reg.addressOffset} ' +'{\n'
+        offset_val = getIntValFromHexString(clu_reg.addressOffset) - baseOffset
+        fileHeader += f' @{offset_val} ' +'{\n'
         nbytes = ubitSize_bytes_dict[clu_reg.size]
         reg_tab_str =  tab_str + cst_tab_str
         fileHeader += reg_tab_str + f'bytes  {nbytes};\n'
@@ -1984,13 +2164,15 @@ def getRegFieldInfo_Ralf(tab_str, clu_reg: St_Register):
                                     pass
                                 if isinstance(e,St_Enum_Val):
                                     enum_str += f'{e.name} = {e.value}\n'
-                                    enum_val_str += f'\'h{e.value}'
+                                    # e_val = e.value
+                                    e_val = getHexStr(e.value)
+                                    enum_val_str += f'\'h{e_val}'
                                     pass 
                                 bFirstEnum = False
                                 pass
                             enum_str += field_tab_str + cst_tab_str + '}\n'
                             if len(fd.enumValues) == 1:
-                                constraint_str = field_tab_str + cst_tab_str + 'value = '+f'{enum_val_str}'+';\n'
+                                constraint_str = field_tab_str + cst_tab_str + 'value == '+f'{enum_val_str}'+';\n'
                                 pass
                             else:
                                 constraint_str = field_tab_str + cst_tab_str + 'value inside {'+f'{enum_val_str}'+'};\n'
@@ -1998,7 +2180,7 @@ def getRegFieldInfo_Ralf(tab_str, clu_reg: St_Register):
                         pass
                     elif fd.writeConstraint == 'range':
                         if fd.range_max and fd.range_min:
-                            constraint_str = field_tab_str + cst_tab_str + 'value inside { ['+f'\'h{fd.range_min}:\'h{fd.range_max}'+'] };\n'
+                            constraint_str = field_tab_str + cst_tab_str + 'value inside { ['+f'\'h{getHexStr(fd.range_min)}:\'h{getHexStr(fd.range_max)}'+'] };\n'
                             pass
                         pass
                     fileHeader += constraint_str
@@ -2016,26 +2198,95 @@ def getRegFieldInfo_Ralf(tab_str, clu_reg: St_Register):
     return fileHeader
     
 
+def getCluRegStructInfo_uvm_sv(clust_reg_lst, module_name:str,clu_name:str, nChild_level:int):
+    clu_reg_str = ''
+    clu_blcok_str = ''
+    clu_build_str = ''
+    fileHeader = ''
+    cls_reg_name = ''
+    cluster_fun_str = ''
+    for clu_reg in clust_reg_lst:
+        if isinstance(clu_reg, St_Cluster):
+            regfile_Name,clu_reg_child_str_info = getCluRegStructInfo_uvm_sv(clu_reg.clusters,module_name,clu_reg.name,nChild_level+1)
+            fileHeader += clu_reg_child_str_info
+            clu_build_str += cst_tab_str + cst_tab_str + f'this.{clu_reg.name} = ral_regfile_{module_name}_{clu_reg.name}::type_id::create("{clu_reg.name}",,get_full_name());\n'
+            if nChild_level == 0:
+                clu_build_str += cst_tab_str + cst_tab_str + f'this.{clu_reg.name}.configure(this,null, "");\n'
+            else:
+                clu_build_str += cst_tab_str + cst_tab_str + f'this.{clu_reg.name}.configure(get_block(), this, "");\n'
 
-def getCluRegStructInfo_Ralf(clust_reg_lst, struct_Name, nChild_level = 0):
+            clu_build_str += cst_tab_str + cst_tab_str + f'this.{clu_reg.name}.build();\n\n'
+
+            if clu_reg.dim > 1:
+                clu_blcok_str += cst_tab_str+ f'rand {regfile_Name} {clu_reg.name}[{clu_reg.dim}];\n'
+            else:
+                clu_blcok_str += cst_tab_str+ f'rand {regfile_Name} {clu_reg.name};\n'
+
+
+            pass
+        elif isinstance(clu_reg, St_Register):
+            reg_name,block_build_str,regFdInfo = getRegFieldInfo_uvm_sv(clu_reg,module_name,nChild_level)
+            if regFdInfo:
+                fileHeader += regFdInfo 
+                clu_build_str += block_build_str 
+                if clu_reg.dim > 1:
+                    clu_blcok_str += cst_tab_str+ f'rand {reg_name} {clu_reg.name}[{clu_reg.dim}];\n'
+                else:
+                    clu_blcok_str += cst_tab_str+ f'rand {reg_name} {clu_reg.name};\n'
+
+    if nChild_level == 0:
+        cluster_fun_str += '\n' + cst_tab_str + f'function new(string name = "{clu_name}");\n' 
+        cluster_fun_str += cst_tab_str + cst_tab_str + 'super.new(name, build_coverage(UVM_NO_COVERAGE));\n'   
+        cluster_fun_str += cst_tab_str + 'endfunction: new\n'
+        cls_reg_name = f'ral_block_{module_name}'
+        clu_reg_str = f'\nclass {cls_reg_name} extends uvm_reg_block;\n'
+        clu_build_str = cst_tab_str + cst_tab_str + 'this.default_map = create_map("", 0, 4, UVM_LITTLE_ENDIAN, 0);\n' + clu_build_str
+    else:
+        cluster_fun_str += '\n' + cst_tab_str + f'function new(string name = "{module_name}_{clu_name}");\n' 
+        cluster_fun_str += cst_tab_str + cst_tab_str + 'super.new(name);\n'   
+        cluster_fun_str += cst_tab_str + 'endfunction: new\n'
+        cluster_fun_str += '\n' + cst_tab_str + 'function uvm_reg_map get_topblock_map();\n'
+        cluster_fun_str += cst_tab_str + cst_tab_str + f'return this.get_parent().default_map;\n'
+        cluster_fun_str += cst_tab_str + 'endfunction : get_topblock_map\n\n'
+        cls_reg_name = f'ral_regfile_{module_name}_{clu_name}'
+        clu_reg_str = f'\nclass {cls_reg_name} extends uvm_reg_file;\n'
+        pass
+    fileHeader += clu_reg_str 
+    fileHeader += clu_blcok_str
+    
+    fileHeader += cluster_fun_str
+
+    fileHeader += '\n'+ cst_tab_str + 'virtual function void build();\n' 
+
+    fileHeader += clu_build_str  
+    fileHeader += cst_tab_str + 'endfunction : build\n\n'
+
+    fileHeader += cst_tab_str + f'`uvm_object_utils({cls_reg_name})\n'
+    fileHeader +=  f'endclass : {cls_reg_name}\n'
+
+    return cls_reg_name, fileHeader
+
+
+
+def getCluRegStructInfo_Ralf(clust_reg_lst, struct_Name, nChild_level = 0, baseOffset = 0):
     cst_newLine_tab_str= ''
     for l in range(nChild_level):
         cst_newLine_tab_str += cst_tab_str
     if nChild_level == 0:
         fileHeader = cst_newLine_tab_str+f'block {struct_Name}'+ ' {\n' + cst_newLine_tab_str + cst_tab_str +'bytes 4;\n'
     else:
-        fileHeader = cst_newLine_tab_str+f'regfile {struct_Name}'+ ' {\n'
+        fileHeader = cst_newLine_tab_str+f'regfile {struct_Name} @{baseOffset}'+ ' {\n'
     newLine_tab_str = cst_newLine_tab_str + cst_tab_str
     
     for clu_reg in clust_reg_lst:
         if isinstance(clu_reg, St_Cluster):
-            clu_reg_str_info = getCluRegStructInfo_Ralf(clu_reg.clusters,clu_reg.name,nChild_level+1)
+            clu_reg_str_info = getCluRegStructInfo_Ralf(clu_reg.clusters,clu_reg.name,nChild_level+1,getIntValFromHexString(clu_reg.addressOffset))
             fileHeader += clu_reg_str_info
             fileHeader += newLine_tab_str+'} ;\n'
             pass
         elif isinstance(clu_reg, St_Register):
-                regFdInfo = getRegFieldInfo_Ralf(newLine_tab_str,clu_reg)
-                fileHeader += regFdInfo        
+            regFdInfo = getRegFieldInfo_Ralf(newLine_tab_str,clu_reg,baseOffset)
+            fileHeader += regFdInfo        
     if nChild_level == 0:
         fileHeader += cst_newLine_tab_str + '} ; \n'
     return fileHeader
@@ -2840,6 +3091,7 @@ def dealwith_excel(xls_file, outFlag=1):
                     mod_file =output_C_moduleFile(perip_lst, sh_name, st_dev.version)
                     module_file_lst.append(mod_file)
                     output_ralf_moduleFile(perip_lst,sh_name,st_dev.version)
+                    output_uvm_sv_moduleFile(perip_lst,sh_name,st_dev.version)
                 st_dev.peripherals[sh_name] = perip_lst
                 if irq_set and isinstance(irq_set,set):
                     st_dev.interrupts.update(irq_set)
