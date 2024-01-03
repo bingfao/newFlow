@@ -15,12 +15,13 @@ import math
 import re
 from datetime import date
 import os
+import os,sys
 import copy
 from sys import flags
 from openpyxl import load_workbook
 from openpyxl.worksheet import worksheet
 from openpyxl.styles import colors, Border, Side, Font, Color
-import json
+
 
 
 # import xlrd
@@ -66,6 +67,24 @@ def getBoolStr(val: bool):
     if val:
         rt_str='true'
     return rt_str
+
+def get_output_c_dir():
+    if sys.platform == 'linux':
+        prj_root = os.getenv("PRJ_ROOT")
+        result_dir    = os.path.join(prj_root,'dv/tb/reg_model/c')
+        return result_dir
+
+def get_output_dut_cfg_dir():
+    if sys.platform == 'linux':
+        prj_root = os.getenv("PRJ_ROOT")
+        result_dir    = os.path.join(prj_root,'dv/tb/reg_model/sv')
+        return result_dir
+
+def get_output_ral_dir():
+    if sys.platform == 'linux':
+        prj_root = os.getenv("PRJ_ROOT")
+        result_dir    = os.path.join(prj_root,'dv/tb/reg_model/ral')
+        return result_dir
 
 
 class St_CPU:
@@ -1694,6 +1713,250 @@ typedef void (*irqFnHandler)(void *);
         out_file.write(fileHeader)
     pass
 
+
+def get_sequence_sv_reg(clu_reg: St_Register,module_index:str,reg_name:str):
+    bAllRegFdHdlPathEmpty = True
+    reg_access_str = ''
+    regReset_ignore_str =''
+    if clu_reg.name.upper() != 'RESERVED':   #Reserved
+        regAccess =clu_reg.access
+        if regAccess == 'W':
+            if clu_reg.dim > 1:
+                # for di in range(reg.dim):
+                regReset_ignore_str = cst_tab_str + cst_tab_str + f'for (int i=0; i< {clu_reg.dim}; i++) begin\n'
+                regReset_ignore_str += cst_tab_str + cst_tab_str + cst_tab_str + 'uvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
+                regReset_ignore_str += f'{module_index}.{reg_name}[i]'+'.get_full_name()},"NO_REG_HW_RESET_TEST",1,this);\n'
+                regReset_ignore_str += cst_tab_str + cst_tab_str +'end\n\n'
+                # pass
+            else:
+                regReset_ignore_str += cst_tab_str + cst_tab_str + 'uvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
+                regReset_ignore_str += f'{module_index}.{reg_name}'+'.get_full_name()},"NO_REG_HW_RESET_TEST",1,this);\n'
+            pass
+        bRegFdHdlEmpty = True
+        for fd in clu_reg.fields:
+            if fd.hdl_path:
+                bAllRegFdHdlPathEmpty = False
+                bRegFdHdlEmpty = False
+        if bRegFdHdlEmpty:
+            hdl_empty_str = '\t\tuvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
+            hdl_empty_str += module_index
+            if clu_reg.dim > 1:
+                # for di in range(reg.dim):
+                row_hdl_empty_str = cst_tab_str + cst_tab_str + f'for (int i=0; i< {clu_reg.dim}; i++) begin\n'
+                row_hdl_empty_str += cst_tab_str+ hdl_empty_str + f'.{reg_name}[i]'+'.get_full_name()},"NO_REG_ACCESS_TEST",1,this);\n'
+                row_hdl_empty_str += cst_tab_str + cst_tab_str +'end\n\n'
+                reg_access_str += row_hdl_empty_str
+            else:
+                row_hdl_empty_str = hdl_empty_str + f'.{reg_name}' + '.get_full_name()},"NO_REG_ACCESS_TEST",1,this);\n'
+                reg_access_str += row_hdl_empty_str
+            pass
+    # print(regReset_ignore_str)
+    # print(reg_access_str)
+    return regReset_ignore_str,reg_access_str,bAllRegFdHdlPathEmpty
+    
+
+def get_sequence_sv_clu(clu:St_Cluster,module_index:str, parent_clu_name:str):
+    clu_regReset_ignore_str = ''
+    clu_regAccess_ignore_str = ''
+    bAllRegFdHdlPathEmpty = True
+    for clu_reg in clu.clusters:
+        clu_name = f'{clu.name}.{clu_reg.name}'
+        if parent_clu_name:
+            clu_name = parent_clu_name + f'.{clu.name}.{clu_reg.name}'
+        # print(clu_name)
+        if isinstance(clu_reg,St_Cluster):
+            child_reset_str,childstr_access_str, bCluFdHdlPathEmpty = get_sequence_sv_clu(clu_reg,module_index,clu_name)
+            clu_regReset_ignore_str += child_reset_str
+            clu_regAccess_ignore_str += childstr_access_str
+            if not bCluFdHdlPathEmpty:
+                bAllRegFdHdlPathEmpty = False
+            pass
+        elif isinstance(clu_reg,St_Register):
+            if clu_reg.name.upper() == 'RESERVED':   #Reserved
+                continue
+            # regAccess =clu_reg.access
+            # fd_hdl_empty_str = ''
+            # regReset_ignore_str =''
+            # if regAccess == 'W':
+            #     if clu_reg.dim > 1:
+            #         # for di in range(reg.dim):
+            #         regReset_ignore_str = cst_tab_str + cst_tab_str + f'for (int i=0; i< {clu_reg.dim}; i++) begin\n'
+            #         regReset_ignore_str += cst_tab_str + cst_tab_str + cst_tab_str + 'uvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
+            #         regReset_ignore_str += f'{module_index}.{clu_name}[i]'+'.get_full_name()},"NO_REG_HW_RESET_TEST",1,this);\n'
+            #         regReset_ignore_str += cst_tab_str + cst_tab_str +'end\n\n'
+            #         # pass
+            #     else:
+            #         regReset_ignore_str += cst_tab_str + cst_tab_str + 'uvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
+            #         regReset_ignore_str += f'{module_index}.{clu_name}'+'.get_full_name()},"NO_REG_HW_RESET_TEST",1,this);\n'
+            #     pass
+            # bRegFdHdlEmpty = True
+            # for fd in clu_reg.fields:
+            #     if fd.hdl_path:
+            #         bAllRegFdHdlPathEmpty = False
+            #         bRegFdHdlEmpty = False
+            # if bRegFdHdlEmpty:
+            #     hdl_empty_str = '\t\tuvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
+            #     hdl_empty_str += module_index
+            #     if clu_reg.dim > 1:
+            #         # for di in range(reg.dim):
+            #         row_hdl_empty_str = cst_tab_str + cst_tab_str + f'for (int i=0; i< {clu_reg.dim}; i++) begin\n'
+            #         row_hdl_empty_str += cst_tab_str+ hdl_empty_str + f'.{clu_name}[i]'+'.get_full_name()},"NO_REG_ACCESS_TEST",1,this);\n'
+            #         row_hdl_empty_str += cst_tab_str + cst_tab_str +'end\n\n'
+            #         fd_hdl_empty_str += row_hdl_empty_str
+            #     else:
+            #         row_hdl_empty_str = hdl_empty_str + f'.{clu_name}' + '.get_full_name()},"NO_REG_ACCESS_TEST",1,this);\n'
+            #         fd_hdl_empty_str += row_hdl_empty_str
+            regReset_ignore_str,reg_access_str,bRegFdHdlPathEmpty = get_sequence_sv_reg(clu_reg,module_index,clu_name)
+            if regReset_ignore_str:
+                clu_regReset_ignore_str += regReset_ignore_str
+            if reg_access_str:
+                clu_regAccess_ignore_str += reg_access_str
+            if not bRegFdHdlPathEmpty:
+                bAllRegFdHdlPathEmpty = False
+            pass
+        pass
+    return clu_regReset_ignore_str, clu_regAccess_ignore_str, bAllRegFdHdlPathEmpty
+
+def output_SequenceSv_moduleFile(module_lst ,modName:str,version:str):
+    modName = modName.lower()
+    out_sv_module_Name = f'{modName}_v_reg_test_sequence'
+    out_file_name = out_sv_module_Name+'.sv'
+    out_file_Pathname = './uvm/'+out_file_name
+    if sys.platform == 'linux':
+        out_file_Pathname = os.path.join(get_output_dut_cfg_dir(), out_file_name)
+    if module_lst:
+        module_inst = module_lst[0]
+        with open(out_file_Pathname, 'w+') as sv_file:
+            fileHeader = f' /* @file    {out_file_name}\n'
+            fileHeader += f' * @author  CIP Application Team\n # @brief   {modName} sequence UVM test .\n'
+
+            # 格式化成2016-03-20 11:45:39形式
+            today = date.today()
+            fileHeader += f' # @version {version} \n # @date    {today.strftime("%y-%m-%d")}\n'
+            fileHeader += """
+*
+******************************************************************************
+* @copyright
+*
+"""
+            fileHeader += f' *  <h2><center>&copy; Copyright (c){today.year} CIP United Co.\n'
+            fileHeader += """
+* All rights reserved.</center></h2>
+*
+* 
+*
+******************************************************************************
+
+*/
+"""
+            fileStr = fileHeader
+            fileStr += f'class {modName}_v_reg_test_sequence extends cip_base_sequence;\n\n'
+            fileStr += f'{cst_tab_str}`uvm_object_utils({modName}_v_reg_test_sequence)\n\n'
+            fileStr += f'{cst_tab_str}function new(string name="{modName}_v_reg_test_sequence");\n'
+            fileStr += f'{cst_tab_str}{cst_tab_str}super.new(name);\n{cst_tab_str}endfunction\n\n'
+            fileStr += f'{cst_tab_str}virtual task body();\n\n'
+            fileStr += f'{cst_tab_str}{cst_tab_str}uvm_reg_hw_reset_seq     reg_rst_seq;\n'
+            bAllRegFdHdlPathEmpty = True
+            modName_U = modName.upper()
+            mod_fd_access_str =''
+            modinstCount= len(module_lst)
+            mod_reg_Reset_ignore_str =''
+            
+            if isinstance(module_inst,St_Peripheral):
+                for index in range(modinstCount):
+                    fd_hdl_empty_str ='' 
+                    regReset_ignore_str = ''
+                    module_index = f'{modName_U}{index}'
+                    for reg in module_inst.clust_reg_lst:
+                        if isinstance(reg,St_Cluster):
+                            clu_reset_str,clu_access_str,b =get_sequence_sv_clu(reg,module_index,'')
+                            mod_reg_Reset_ignore_str += clu_reset_str
+                            mod_fd_access_str += clu_access_str
+                            if not b:
+                                bAllRegFdHdlPathEmpty = False
+                            pass
+                        elif isinstance(reg,St_Register):
+                            # if reg.bVirtual:
+                            #     continue
+                            if reg.name.upper() == 'RESERVED': #Reserved
+                                continue
+                            # regAccess =reg.access
+                            # if regAccess == 'W':
+                            #     if reg.dim > 1:
+                            #         # for di in range(reg.dim):
+                            #         regReset_ignore_str += cst_tab_str + cst_tab_str + f'for (int i=0; i< {reg.dim}; i++) begin\n'
+                            #         regReset_ignore_str += cst_tab_str + cst_tab_str + cst_tab_str + 'uvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'+f'{module_index}.{reg.name}[i]'+'.get_full_name()},"NO_REG_HW_RESET_TEST",1,this);\n'
+                            #         regReset_ignore_str += cst_tab_str + cst_tab_str +'end\n\n'
+                            #         # pass
+                            #     else:
+                            #         regReset_ignore_str += cst_tab_str + cst_tab_str + 'uvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'+f'{module_index}.{reg.name}'+'.get_full_name()},"NO_REG_HW_RESET_TEST",1,this);\n'
+                            #     pass
+                            # bRegFdHdlEmpty = True
+                            # for fd in reg.fields:
+                            #     if fd.hdl_path:
+                            #         bAllRegFdHdlPathEmpty = False
+                            #         bRegFdHdlEmpty = False
+                            # if bRegFdHdlEmpty:
+                            #     hdl_empty_str = '\t\tuvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
+                            #     hdl_empty_str += module_index
+                            #     if reg.dim > 1:
+                            #         # for di in range(reg.dim):
+                            #         row_hdl_empty_str = cst_tab_str + cst_tab_str + f'for (int i=0; i< {reg.dim}; i++) begin\n'
+                            #         row_hdl_empty_str += cst_tab_str+ hdl_empty_str + f'.{reg.name}[i]'+'.get_full_name()},"NO_REG_ACCESS_TEST",1,this);\n'
+                            #         row_hdl_empty_str += cst_tab_str + cst_tab_str +'end\n\n'
+                            #         fd_hdl_empty_str += row_hdl_empty_str
+                            #     else:
+                            #         row_hdl_empty_str = hdl_empty_str + f'.{reg.name}' + '.get_full_name()},"NO_REG_ACCESS_TEST",1,this);\n'
+                            #         fd_hdl_empty_str += row_hdl_empty_str
+                            # pass
+                            regReset_ignore_str,reg_access_str,bRegFdHdlPathEmpty = get_sequence_sv_reg(reg,module_index,reg.name)
+                            if regReset_ignore_str:
+                                mod_reg_Reset_ignore_str += regReset_ignore_str
+                            if reg_access_str:
+                                mod_fd_access_str += reg_access_str
+                            if not bRegFdHdlPathEmpty:
+                                bAllRegFdHdlPathEmpty = False
+                            pass
+                        pass
+                    if mod_fd_access_str:
+                        mod_fd_access_str += '\n'
+                    if mod_reg_Reset_ignore_str:
+                        mod_reg_Reset_ignore_str += '\n'
+                    pass
+                pass
+            if not bAllRegFdHdlPathEmpty:
+                fileStr += '\t\tuvm_reg_access_seq       reg_access_seq;\n\n'
+            fileStr += '\t\tsuper.body;\n\n'
+
+
+            fileStr += '\t\t`uvm_info("UVM_SEQ","register reset sequence started",UVM_LOW)\n'
+            fileStr += mod_reg_Reset_ignore_str
+            fileStr += '\t\treg_rst_seq = new();\n'
+            for index in range(modinstCount):
+                module_index = f'{modName_U}{index}'
+                fileStr += f'\t\treg_rst_seq.model = p_sequencer.u_soc_reg_model.{module_index};\n'
+                fileStr += '\t\treg_rst_seq.start(p_sequencer);\n'
+            fileStr += '\t\t`uvm_info("UVM_SEQ","register reset sequence finished",UVM_LOW)\n\n'
+
+            if not bAllRegFdHdlPathEmpty:
+                fileStr += '\t\t`uvm_info("UVM_SEQ","register access sequence started",UVM_LOW)\n'
+                fileStr += mod_fd_access_str
+                fileStr += '\t\treg_access_seq = new();\n'
+                for index in range(modinstCount):
+                    module_index = f'{modName_U}{index}'
+                    fileStr += f'\t\treg_access_seq.model = p_sequencer.u_soc_reg_model.{module_index};\n'
+                    fileStr += '\t\treg_access_seq.start(p_sequencer);\n'
+                    pass
+
+                fileStr += '\t\t`uvm_info("UVM_SEQ","register access sequence finished",UVM_LOW)\n'
+            
+            fileStr += '\n\tendtask: body\n\n'
+            fileStr += f'endclass:{modName}_v_reg_test_sequence\n'
+            sv_file.write(fileStr)
+
+            return out_file_Pathname
+    pass
+
 def output_uvm_sv_moduleFile(preip_lst,preip_name,version: str):
     preip_inst = None
     if preip_lst:
@@ -2083,6 +2346,8 @@ def getRegFieldInfo_uvm_sv(clu_reg: St_Register,moduleName:str,cluster_level = 0
         cls_reg_str +=  f'endclass : {cls_reg_name}\n'
 
         reg_Access = clu_reg.access.upper()
+        if reg_Access == 'R' or reg_Access == 'W':
+            reg_Access += 'O'
         if clu_reg.dim > 1:
             block_build_str += field_tab_str + f'foreach (this.{regName}[i]) begin\n'
             block_build_str += field_tab_str + cst_tab_str + f'this.{regName}[i] = {cls_reg_name}::type_id::create("{regName}",,get_full_name());\n'
@@ -2196,7 +2461,11 @@ def getRegFieldInfo_Ralf(tab_str, clu_reg: St_Register,baseOffset:int):
             fileHeader += f'# {clu_reg.description}'
         fileHeader += '\n'
     return fileHeader
-    
+
+
+def out_sys_uvm_sv(st_dev: St_Device):
+    #基于domain
+    pass    
 
 def getCluRegStructInfo_uvm_sv(clust_reg_lst, module_name:str,clu_name:str, nChild_level:int):
     clu_reg_str = ''
@@ -3092,12 +3361,11 @@ def dealwith_excel(xls_file, outFlag=1):
                     module_file_lst.append(mod_file)
                     output_ralf_moduleFile(perip_lst,sh_name,st_dev.version)
                     output_uvm_sv_moduleFile(perip_lst,sh_name,st_dev.version)
+                    output_SequenceSv_moduleFile(perip_lst[0:1],sh_name,st_dev.version)
                 st_dev.peripherals[sh_name] = perip_lst
                 if irq_set and isinstance(irq_set,set):
                     st_dev.interrupts.update(irq_set)
-                with open('./dev.json', 'w+') as f: 
-                     f.write(st_dev.toJson())
-                
+           
 
     if checkErr:
         filename = os.path.basename(xls_file)
@@ -3105,7 +3373,12 @@ def dealwith_excel(xls_file, outFlag=1):
         print("Check Failed. Please review "+ filename + " and fix it.")
         # wb.save(out_mark_xlsx_file)
     else:
+        with open('./dev.json', 'w+') as f: 
+            f.write(st_dev.toJson())
+        out_sys_uvm_sv(st_dev)
         if outFlag == 2:
+            #c代码全部输出到一个文件
+            output_C_dev_InOneFile(st_dev)
             pass
         elif outFlag == 1:
             # 输出dev文件
