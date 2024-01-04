@@ -195,7 +195,7 @@ class St_Field:
                 inst_str += '\t'+e.get_inst_str()+'\n'
         return inst_str
     
-    def toJson(self):
+    def toJson(self) -> str:
         json_str = '{\n' f'"name": "{self.name}","description": "{self.description}","bitOffset": {self.bitOffset}, "bitWidth": {self.bitWidth},"access": "{self.access}","defaultValue": "{self.defaultValue}"'
         json_str += f',"writeConstraint": "{self.writeConstraint}","hdl_path": "{self.hdl_path}"'
         if self.writeConstraint == 'enumerated':
@@ -239,14 +239,15 @@ class St_Register:
         self.dataType = 'uint32_t'
         self.fields = []
         self.hdl_path = ''
+        self.nValidFdCount = 0
 
-    def getRegName(self):
+    def getRegName(self) -> str:
         cRegName = self.name
         if self.headRegisterName:
             cRegName = self.headRegisterName
         return cRegName
 
-    def get_inst_str(self):
+    def get_inst_str(self) -> str:
         inst_str = 'Register:\n'
         inst_str += f'name:{self.name},dim:{self.dim},dimIncr:{self.dimIncrement},desc:{self.description},cRegNmae:{self.headRegisterName},alterReg:{
             self.alternateRegister},alterGroup:{self.alternateGroupName},offset:{self.addressOffset},size:{self.size},access:{self.access}\n'
@@ -254,7 +255,7 @@ class St_Register:
             inst_str += '\t'+e.get_inst_str()+'\n'
         return inst_str
     
-    def toJson(self):
+    def toJson(self) -> str:
         json_str = '{\n' f'"name": "{self.name}","dim": {self.dim},"dimIncrement": {self.dimIncrement}, "dimName": "{self.dimName}","description": "{self.description}","headRegisterName": "{self.headRegisterName}"'
         json_str += f',"alternateRegister": "{self.alternateRegister}","alternateGroupName": "{self.alternateGroupName}","addressOffset": "{self.addressOffset}","size": {self.size},"access": "{self.access}"'
         json_str += f',"resetValue": "{self.resetValue}","resetMask": "{self.resetMask}","hdl_path": "{self.hdl_path}"'
@@ -377,9 +378,17 @@ class St_Peripheral:
     
     def getAddrStr(self):
         addr_str = self.baseAddress
-        if self.addrDerivedFrom and self.addressOffset:
-            addr_str = self.addrDerivedFrom + ' + '+ self.addressOffset
+        if self.addrDerivedFrom:
+            addr_str = self.addrDerivedFrom 
+        addr_str += ' + '+ self.addressOffset
         return addr_str
+    
+    def getDirectAddrStr(self):
+        addr_str = self.baseAddress
+        addr_str += ' + '+ self.addressOffset
+        return addr_str
+
+
     
     def toJson(self):
         json_str = '{\n' f'"name": "{self.name}","derivedFrom": "{self.derivedFrom}","processor": "{self.processor}", "aliasPeripheral": "{self.aliasPeripheral}","prefixToName": "{self.prefixToName}","suffixToName": "{self.suffixToName}"'
@@ -535,7 +544,7 @@ class St_clusterFlag_info:
         self.bEnd = False
 
 
-def markCell_InvalidFunc2(ws, row, col, clr='ff0000'):
+def markCell_InvalidFunc2(ws:worksheet, row:int, col:int, clr:str ='ff0000'):
     double = Side(border_style="double", color=clr)
     border = Border(left=double,
                     right=double,
@@ -546,7 +555,7 @@ def markCell_InvalidFunc2(ws, row, col, clr='ff0000'):
     cell.font = Font(color="FF0000")
 
 
-def markCell_InvalidFunc(ws, cellstr, clr='ff0000'):
+def markCell_InvalidFunc(ws:worksheet, cellstr:str, clr: str ='ff0000'):
     double = Side(border_style="double", color=clr)
     border = Border(left=double,
                     right=double,
@@ -557,7 +566,7 @@ def markCell_InvalidFunc(ws, cellstr, clr='ff0000'):
     cell.font = Font(color="FF0000")
 
 
-def isHexString(strVal, b0xStart=True):
+def isHexString(strVal:str, b0xStart:bool = True):
     strUpper = strVal.upper()
     brt = True
     strhex = strUpper
@@ -572,14 +581,14 @@ def isHexString(strVal, b0xStart=True):
                 break
     return brt
 
-def getIntValFromHexString(strVal,b0xStart=True):
+def getIntValFromHexString(strVal:str,b0xStart:bool = True):
     nPos = 0
     if b0xStart:
         nPos =2
     nVal = int(strVal[nPos:],16)
     return nVal
 
-def isUnallowedVarName(strVal):
+def isUnallowedVarName(strVal:str):
     # strVal = strVal.strip()
     pattern = '^[a-zA-Z_][a-zA-Z0-9_]*$'
     matchObject = re.search(pattern, strVal)
@@ -590,7 +599,7 @@ def isUnallowedVarName(strVal):
     return (matchObject is None)
 
 
-def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
+def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
     print("ModuleSheet : "+sheetName)
     bMod_CheckErr = False
     perip_title = ws['A1'].value
@@ -924,7 +933,7 @@ def checkModuleSheetValue(ws, sheetName):  # 传入worksheet
     return not bMod_CheckErr, perip_list,interupts_set
 
 
-def readRegister(ws, row_end, row_start, parent_clu_reg_list):
+def readRegister(ws:worksheet, row_end:int, row_start:int, parent_clu_reg_list:list):
     bError = False
     maxCols = ws.max_column
     #先读出CPU的各列对应的字段
@@ -1075,10 +1084,14 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
                         for i in range(fd_len):
                             if cur_st_reg.fields[i].bitOffset > fd.bitOffset:
                                 cur_st_reg.fields.insert(i,fd)
+                                if fd.name != 'RESERVED':
+                                    cur_st_reg.nValidFdCount += 1
                                 binsertFd = True
                                 break
                     if not binsertFd:
                         cur_st_reg.fields.append(fd)
+                        if fd.name != 'RESERVED':
+                            cur_st_reg.nValidFdCount += 1
                 else:
                     enumName = ws.cell(row, regFd_col_dict['enumName']).value
                     enumVal = ws.cell(row, regFd_col_dict['enumValue']).value
@@ -1103,7 +1116,7 @@ def readRegister(ws, row_end, row_start, parent_clu_reg_list):
     return parent_clu_reg_list, row, bError
 
 
-def readCluster(ws: worksheet, parent_clu_reg_list, clu_range: St_ClusterInnerRange, clu_range_list):
+def readCluster(ws: worksheet, parent_clu_reg_list:list, clu_range: St_ClusterInnerRange, clu_range_list:list):
     bError = False
     clu_start = clu_range.rowStart
     clu_end = clu_range.rowEnd
@@ -1714,7 +1727,7 @@ typedef void (*irqFnHandler)(void *);
     pass
 
 
-def get_sequence_sv_reg(clu_reg: St_Register,module_index:str,reg_name:str):
+def get_sequence_sv_reg(clu_reg: St_Register,module_index:str,reg_name:str,tab_str:str):
     bAllRegFdHdlPathEmpty = True
     reg_access_str = ''
     regReset_ignore_str =''
@@ -1723,13 +1736,13 @@ def get_sequence_sv_reg(clu_reg: St_Register,module_index:str,reg_name:str):
         if regAccess == 'W':
             if clu_reg.dim > 1:
                 # for di in range(reg.dim):
-                regReset_ignore_str = cst_tab_str + cst_tab_str + f'for (int i=0; i< {clu_reg.dim}; i++) begin\n'
-                regReset_ignore_str += cst_tab_str + cst_tab_str + cst_tab_str + 'uvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
+                regReset_ignore_str = tab_str + f'for (int i=0; i< {clu_reg.dim}; i++) begin\n'
+                regReset_ignore_str += tab_str + cst_tab_str + 'uvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
                 regReset_ignore_str += f'{module_index}.{reg_name}[i]'+'.get_full_name()},"NO_REG_HW_RESET_TEST",1,this);\n'
-                regReset_ignore_str += cst_tab_str + cst_tab_str +'end\n\n'
+                regReset_ignore_str += tab_str +'end\n\n'
                 # pass
             else:
-                regReset_ignore_str += cst_tab_str + cst_tab_str + 'uvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
+                regReset_ignore_str += tab_str + 'uvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
                 regReset_ignore_str += f'{module_index}.{reg_name}'+'.get_full_name()},"NO_REG_HW_RESET_TEST",1,this);\n'
             pass
         bRegFdHdlEmpty = True
@@ -1738,13 +1751,13 @@ def get_sequence_sv_reg(clu_reg: St_Register,module_index:str,reg_name:str):
                 bAllRegFdHdlPathEmpty = False
                 bRegFdHdlEmpty = False
         if bRegFdHdlEmpty:
-            hdl_empty_str = '\t\tuvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
+            hdl_empty_str = f'{tab_str}uvm_resource_db#(bit)'+'::set({"REG::",p_sequencer.u_soc_reg_model.'
             hdl_empty_str += module_index
             if clu_reg.dim > 1:
                 # for di in range(reg.dim):
-                row_hdl_empty_str = cst_tab_str + cst_tab_str + f'for (int i=0; i< {clu_reg.dim}; i++) begin\n'
+                row_hdl_empty_str = tab_str + f'for (int i=0; i< {clu_reg.dim}; i++) begin\n'
                 row_hdl_empty_str += cst_tab_str+ hdl_empty_str + f'.{reg_name}[i]'+'.get_full_name()},"NO_REG_ACCESS_TEST",1,this);\n'
-                row_hdl_empty_str += cst_tab_str + cst_tab_str +'end\n\n'
+                row_hdl_empty_str += tab_str +'end\n\n'
                 reg_access_str += row_hdl_empty_str
             else:
                 row_hdl_empty_str = hdl_empty_str + f'.{reg_name}' + '.get_full_name()},"NO_REG_ACCESS_TEST",1,this);\n'
@@ -1755,7 +1768,7 @@ def get_sequence_sv_reg(clu_reg: St_Register,module_index:str,reg_name:str):
     return regReset_ignore_str,reg_access_str,bAllRegFdHdlPathEmpty
     
 
-def get_sequence_sv_clu(clu:St_Cluster,module_index:str, parent_clu_name:str):
+def get_sequence_sv_clu(clu:St_Cluster,module_index:str, parent_clu_name:str,tab_str:str):
     clu_regReset_ignore_str = ''
     clu_regAccess_ignore_str = ''
     bAllRegFdHdlPathEmpty = True
@@ -1765,7 +1778,7 @@ def get_sequence_sv_clu(clu:St_Cluster,module_index:str, parent_clu_name:str):
             clu_name = parent_clu_name + f'.{clu.name}.{clu_reg.name}'
         # print(clu_name)
         if isinstance(clu_reg,St_Cluster):
-            child_reset_str,childstr_access_str, bCluFdHdlPathEmpty = get_sequence_sv_clu(clu_reg,module_index,clu_name)
+            child_reset_str,childstr_access_str, bCluFdHdlPathEmpty = get_sequence_sv_clu(clu_reg,module_index,clu_name,tab_str)
             clu_regReset_ignore_str += child_reset_str
             clu_regAccess_ignore_str += childstr_access_str
             if not bCluFdHdlPathEmpty:
@@ -1774,39 +1787,8 @@ def get_sequence_sv_clu(clu:St_Cluster,module_index:str, parent_clu_name:str):
         elif isinstance(clu_reg,St_Register):
             if clu_reg.name.upper() == 'RESERVED':   #Reserved
                 continue
-            # regAccess =clu_reg.access
-            # fd_hdl_empty_str = ''
-            # regReset_ignore_str =''
-            # if regAccess == 'W':
-            #     if clu_reg.dim > 1:
-            #         # for di in range(reg.dim):
-            #         regReset_ignore_str = cst_tab_str + cst_tab_str + f'for (int i=0; i< {clu_reg.dim}; i++) begin\n'
-            #         regReset_ignore_str += cst_tab_str + cst_tab_str + cst_tab_str + 'uvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
-            #         regReset_ignore_str += f'{module_index}.{clu_name}[i]'+'.get_full_name()},"NO_REG_HW_RESET_TEST",1,this);\n'
-            #         regReset_ignore_str += cst_tab_str + cst_tab_str +'end\n\n'
-            #         # pass
-            #     else:
-            #         regReset_ignore_str += cst_tab_str + cst_tab_str + 'uvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
-            #         regReset_ignore_str += f'{module_index}.{clu_name}'+'.get_full_name()},"NO_REG_HW_RESET_TEST",1,this);\n'
-            #     pass
-            # bRegFdHdlEmpty = True
-            # for fd in clu_reg.fields:
-            #     if fd.hdl_path:
-            #         bAllRegFdHdlPathEmpty = False
-            #         bRegFdHdlEmpty = False
-            # if bRegFdHdlEmpty:
-            #     hdl_empty_str = '\t\tuvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
-            #     hdl_empty_str += module_index
-            #     if clu_reg.dim > 1:
-            #         # for di in range(reg.dim):
-            #         row_hdl_empty_str = cst_tab_str + cst_tab_str + f'for (int i=0; i< {clu_reg.dim}; i++) begin\n'
-            #         row_hdl_empty_str += cst_tab_str+ hdl_empty_str + f'.{clu_name}[i]'+'.get_full_name()},"NO_REG_ACCESS_TEST",1,this);\n'
-            #         row_hdl_empty_str += cst_tab_str + cst_tab_str +'end\n\n'
-            #         fd_hdl_empty_str += row_hdl_empty_str
-            #     else:
-            #         row_hdl_empty_str = hdl_empty_str + f'.{clu_name}' + '.get_full_name()},"NO_REG_ACCESS_TEST",1,this);\n'
-            #         fd_hdl_empty_str += row_hdl_empty_str
-            regReset_ignore_str,reg_access_str,bRegFdHdlPathEmpty = get_sequence_sv_reg(clu_reg,module_index,clu_name)
+            
+            regReset_ignore_str,reg_access_str,bRegFdHdlPathEmpty = get_sequence_sv_reg(clu_reg,module_index,clu_name,tab_str)
             if regReset_ignore_str:
                 clu_regReset_ignore_str += regReset_ignore_str
             if reg_access_str:
@@ -1817,17 +1799,17 @@ def get_sequence_sv_clu(clu:St_Cluster,module_index:str, parent_clu_name:str):
         pass
     return clu_regReset_ignore_str, clu_regAccess_ignore_str, bAllRegFdHdlPathEmpty
 
-def output_SequenceSv_moduleFile(module_lst ,modName:str,version:str):
+def output_SequenceSv_moduleFile(preip_lst:list,modName:str,version:str):
     modName = modName.lower()
     out_sv_module_Name = f'{modName}_v_reg_test_sequence'
     out_file_name = out_sv_module_Name+'.sv'
     out_file_Pathname = './uvm/'+out_file_name
     if sys.platform == 'linux':
         out_file_Pathname = os.path.join(get_output_dut_cfg_dir(), out_file_name)
-    if module_lst:
-        module_inst = module_lst[0]
+    if preip_lst:
+        
         with open(out_file_Pathname, 'w+') as sv_file:
-            fileHeader = f' /* @file    {out_file_name}\n'
+            fileHeader = f'/**\n * @file    {out_file_name}\n'
             fileHeader += f' * @author  CIP Application Team\n # @brief   {modName} sequence UVM test .\n'
 
             # 格式化成2016-03-20 11:45:39形式
@@ -1848,6 +1830,7 @@ def output_SequenceSv_moduleFile(module_lst ,modName:str,version:str):
 ******************************************************************************
 
 */
+
 """
             fileStr = fileHeader
             fileStr += f'class {modName}_v_reg_test_sequence extends cip_base_sequence;\n\n'
@@ -1859,105 +1842,88 @@ def output_SequenceSv_moduleFile(module_lst ,modName:str,version:str):
             bAllRegFdHdlPathEmpty = True
             modName_U = modName.upper()
             mod_fd_access_str =''
-            modinstCount= len(module_lst)
+            modinstCount= len(preip_lst)
             mod_reg_Reset_ignore_str =''
+            module_inst = preip_lst[0]
+            tab_str = cst_tab_str +cst_tab_str
+            if modinstCount > 1 :
+                module_index = f'{modName_U}[n]'
+                tab_str += cst_tab_str
+            else:
+                module_index = modName_U
             
             if isinstance(module_inst,St_Peripheral):
-                for index in range(modinstCount):
-                    fd_hdl_empty_str ='' 
-                    regReset_ignore_str = ''
-                    module_index = f'{modName_U}{index}'
-                    for reg in module_inst.clust_reg_lst:
-                        if isinstance(reg,St_Cluster):
-                            clu_reset_str,clu_access_str,b =get_sequence_sv_clu(reg,module_index,'')
-                            mod_reg_Reset_ignore_str += clu_reset_str
-                            mod_fd_access_str += clu_access_str
-                            if not b:
-                                bAllRegFdHdlPathEmpty = False
-                            pass
-                        elif isinstance(reg,St_Register):
-                            # if reg.bVirtual:
-                            #     continue
-                            if reg.name.upper() == 'RESERVED': #Reserved
-                                continue
-                            # regAccess =reg.access
-                            # if regAccess == 'W':
-                            #     if reg.dim > 1:
-                            #         # for di in range(reg.dim):
-                            #         regReset_ignore_str += cst_tab_str + cst_tab_str + f'for (int i=0; i< {reg.dim}; i++) begin\n'
-                            #         regReset_ignore_str += cst_tab_str + cst_tab_str + cst_tab_str + 'uvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'+f'{module_index}.{reg.name}[i]'+'.get_full_name()},"NO_REG_HW_RESET_TEST",1,this);\n'
-                            #         regReset_ignore_str += cst_tab_str + cst_tab_str +'end\n\n'
-                            #         # pass
-                            #     else:
-                            #         regReset_ignore_str += cst_tab_str + cst_tab_str + 'uvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'+f'{module_index}.{reg.name}'+'.get_full_name()},"NO_REG_HW_RESET_TEST",1,this);\n'
-                            #     pass
-                            # bRegFdHdlEmpty = True
-                            # for fd in reg.fields:
-                            #     if fd.hdl_path:
-                            #         bAllRegFdHdlPathEmpty = False
-                            #         bRegFdHdlEmpty = False
-                            # if bRegFdHdlEmpty:
-                            #     hdl_empty_str = '\t\tuvm_resource_db#(bit)::set({"REG::",p_sequencer.u_soc_reg_model.'
-                            #     hdl_empty_str += module_index
-                            #     if reg.dim > 1:
-                            #         # for di in range(reg.dim):
-                            #         row_hdl_empty_str = cst_tab_str + cst_tab_str + f'for (int i=0; i< {reg.dim}; i++) begin\n'
-                            #         row_hdl_empty_str += cst_tab_str+ hdl_empty_str + f'.{reg.name}[i]'+'.get_full_name()},"NO_REG_ACCESS_TEST",1,this);\n'
-                            #         row_hdl_empty_str += cst_tab_str + cst_tab_str +'end\n\n'
-                            #         fd_hdl_empty_str += row_hdl_empty_str
-                            #     else:
-                            #         row_hdl_empty_str = hdl_empty_str + f'.{reg.name}' + '.get_full_name()},"NO_REG_ACCESS_TEST",1,this);\n'
-                            #         fd_hdl_empty_str += row_hdl_empty_str
-                            # pass
-                            regReset_ignore_str,reg_access_str,bRegFdHdlPathEmpty = get_sequence_sv_reg(reg,module_index,reg.name)
-                            if regReset_ignore_str:
-                                mod_reg_Reset_ignore_str += regReset_ignore_str
-                            if reg_access_str:
-                                mod_fd_access_str += reg_access_str
-                            if not bRegFdHdlPathEmpty:
-                                bAllRegFdHdlPathEmpty = False
-                            pass
+                for reg in module_inst.clust_reg_lst:
+                    if isinstance(reg,St_Cluster):
+                        clu_reset_str,clu_access_str,b =get_sequence_sv_clu(reg,module_index,'',tab_str)
+                        mod_reg_Reset_ignore_str += clu_reset_str
+                        mod_fd_access_str += clu_access_str
+                        if not b:
+                            bAllRegFdHdlPathEmpty = False
                         pass
-                    if mod_fd_access_str:
-                        mod_fd_access_str += '\n'
-                    if mod_reg_Reset_ignore_str:
-                        mod_reg_Reset_ignore_str += '\n'
+                    elif isinstance(reg,St_Register):
+                        # if reg.bVirtual:
+                        #     continue
+                        if reg.name.upper() == 'RESERVED': #Reserved
+                            continue
+                        regReset_ignore_str,reg_access_str,bRegFdHdlPathEmpty = get_sequence_sv_reg(reg,module_index,reg.name,tab_str)
+                        if regReset_ignore_str:
+                            mod_reg_Reset_ignore_str += regReset_ignore_str
+                        if reg_access_str:
+                            mod_fd_access_str += reg_access_str
+                        if not bRegFdHdlPathEmpty:
+                            bAllRegFdHdlPathEmpty = False
+                        pass
                     pass
+                if mod_fd_access_str:
+                    mod_fd_access_str += '\n'
+                if mod_reg_Reset_ignore_str:
+                    mod_reg_Reset_ignore_str += '\n'
                 pass
-            if not bAllRegFdHdlPathEmpty:
-                fileStr += '\t\tuvm_reg_access_seq       reg_access_seq;\n\n'
-            fileStr += '\t\tsuper.body;\n\n'
-
-
-            fileStr += '\t\t`uvm_info("UVM_SEQ","register reset sequence started",UVM_LOW)\n'
-            fileStr += mod_reg_Reset_ignore_str
-            fileStr += '\t\treg_rst_seq = new();\n'
-            for index in range(modinstCount):
-                module_index = f'{modName_U}{index}'
-                fileStr += f'\t\treg_rst_seq.model = p_sequencer.u_soc_reg_model.{module_index};\n'
-                fileStr += '\t\treg_rst_seq.start(p_sequencer);\n'
-            fileStr += '\t\t`uvm_info("UVM_SEQ","register reset sequence finished",UVM_LOW)\n\n'
 
             if not bAllRegFdHdlPathEmpty:
-                fileStr += '\t\t`uvm_info("UVM_SEQ","register access sequence started",UVM_LOW)\n'
-                fileStr += mod_fd_access_str
-                fileStr += '\t\treg_access_seq = new();\n'
-                for index in range(modinstCount):
-                    module_index = f'{modName_U}{index}'
-                    fileStr += f'\t\treg_access_seq.model = p_sequencer.u_soc_reg_model.{module_index};\n'
-                    fileStr += '\t\treg_access_seq.start(p_sequencer);\n'
-                    pass
+                fileStr += f'{cst_tab_str}{cst_tab_str}uvm_reg_access_seq       reg_access_seq;\n\n'
+            fileStr += f'{cst_tab_str}{cst_tab_str}super.body;\n\n'
 
-                fileStr += '\t\t`uvm_info("UVM_SEQ","register access sequence finished",UVM_LOW)\n'
+
+            fileStr += f'{cst_tab_str}{cst_tab_str}`uvm_info("UVM_SEQ","register reset sequence started",UVM_LOW)\n'
+            fileStr += f'{cst_tab_str}{cst_tab_str}reg_rst_seq = new();\n'
             
-            fileStr += '\n\tendtask: body\n\n'
+            if modinstCount > 1 :
+                fileStr += f'{cst_tab_str}{cst_tab_str}for (int n=0; n< {modinstCount}; n++) begin\n'
+                pass
+            fileStr += mod_reg_Reset_ignore_str
+            fileStr += f'{tab_str}reg_rst_seq.model = p_sequencer.u_soc_reg_model.{module_index};\n'
+            fileStr += f'{tab_str}reg_rst_seq.start(p_sequencer);\n'
+            if modinstCount > 1 :
+                fileStr += f'{cst_tab_str}{cst_tab_str}end\n\n'
+            
+            fileStr += f'{cst_tab_str}{cst_tab_str}`uvm_info("UVM_SEQ","register reset sequence finished",UVM_LOW)\n\n'
+
+            if not bAllRegFdHdlPathEmpty:
+                fileStr += f'{cst_tab_str}{cst_tab_str}`uvm_info("UVM_SEQ","register access sequence started",UVM_LOW)\n'
+                fileStr += f'{cst_tab_str}{cst_tab_str}reg_access_seq = new();\n'
+                if modinstCount > 1 :
+                    fileStr += f'{cst_tab_str}{cst_tab_str}for (int n=0; n< {modinstCount}; n++) begin\n'
+                    pass
+                fileStr += mod_fd_access_str      
+
+                fileStr += f'{tab_str}reg_access_seq.model = p_sequencer.u_soc_reg_model.{module_index};\n'
+                fileStr += f'{tab_str}reg_access_seq.start(p_sequencer);\n'
+  
+                if modinstCount > 1 :
+                    fileStr += f'{cst_tab_str}{cst_tab_str}end\n\n'
+
+                fileStr += f'{cst_tab_str}{cst_tab_str}`uvm_info("UVM_SEQ","register access sequence finished",UVM_LOW)\n'
+            
+            fileStr += f'\n{cst_tab_str}endtask: body\n\n'
             fileStr += f'endclass:{modName}_v_reg_test_sequence\n'
             sv_file.write(fileStr)
 
             return out_file_Pathname
     pass
 
-def output_uvm_sv_moduleFile(preip_lst,preip_name,version: str):
+def output_uvm_sv_moduleFile(preip_lst:list,preip_name:str,version: str):
     preip_inst = None
     if preip_lst:
         preip_inst = preip_lst[0]
@@ -1968,7 +1934,7 @@ def output_uvm_sv_moduleFile(preip_lst,preip_name,version: str):
             out_file_name = out_ralf_file_Name+'.sv'
             out_file_Pathname = './uvm/'+out_file_name
             with open(out_file_Pathname, 'w+') as out_file:
-                fileHeader = f' /* @file    {out_file_name}\n'
+                fileHeader = f'/**\n * @file    {out_file_name}\n'
                 fileHeader += f' * @author  CIP Application Team\n # @brief   {preip_name} Register struct Header File.\n'
                 fileHeader += ' *          This file contains:\n #           - Data structures and the address mapping for\n'
                 fileHeader += f" *             {preip_name} peripherals\n #           - Including peripheral's registers declarations and bits\n"
@@ -1992,6 +1958,7 @@ def output_uvm_sv_moduleFile(preip_lst,preip_name,version: str):
 ******************************************************************************
 
 */
+
 """
                 macro_name = f'RAL_MOD_{preip_name}'
                 fileHeader += f'`ifndef {macro_name}\n`define {macro_name}\n\n'
@@ -2006,7 +1973,7 @@ def output_uvm_sv_moduleFile(preip_lst,preip_name,version: str):
                 return out_file_Pathname
     pass
 
-def output_ralf_moduleFile(preip_lst,preip_name,version: str):
+def output_ralf_moduleFile(preip_lst:list,preip_name:str,version: str):
     preip_inst = None
     if preip_lst:
         preip_inst = preip_lst[0]
@@ -2045,7 +2012,7 @@ def output_ralf_moduleFile(preip_lst,preip_name,version: str):
                 return out_file_Pathname
     pass
 
-def output_C_moduleFile(preip_lst, preip_name, version):
+def output_C_moduleFile(preip_lst:list, preip_name:str, version:str):
     preip_inst = None
     
     if preip_lst:
@@ -2241,8 +2208,314 @@ def output_C_moduleFile(preip_lst, preip_name, version):
                 out_file.write(fileHeader)
 
                 return out_file_Pathname
-            
-def getHexStr(var):
+
+def fieldWriteChk_func(errCount_Write_var:str, str_Tab:str, fd_var:str, module_fd_var:str, strfdMask:str):
+    fdWriteCheckstr = ''
+    fdWriteCheckstr += f'{str_Tab}{module_fd_var} = {strfdMask};\n'
+    fdWriteCheckstr += f'{str_Tab}nRegFdVal = {module_fd_var};\n'
+    fdWriteCheckstr += f'{str_Tab}if({module_fd_var} != {strfdMask})\n'
+    fdWriteCheckstr += f'{str_Tab}' + '{\n'
+    fdWriteCheckstr += f'{str_Tab}{cst_tab_str}Print_time();\n'
+    fdWriteCheckstr += f'{str_Tab}{cst_tab_str}Error("Inst_%u # {fd_var}  [0x%X] NOt same as Write [{strfdMask}]! \\n", mi, nRegFdVal);\n'
+    fdWriteCheckstr += f'{str_Tab}{cst_tab_str}++{errCount_Write_var};\n'
+    fdWriteCheckstr += str_Tab + '}\n'
+    return fdWriteCheckstr
+
+
+def getModule_Clu_FdChkStr(clu:St_Cluster,errCount_var:str, errCount_Write_var:str, modinst_var:str,bForLoop: bool = True):
+    filed_resetChk_str = ''
+    field_WriteChk_str = ''
+    return filed_resetChk_str, field_WriteChk_str
+
+def getModule_Reg_FdChkStr_impl(reg:St_Register,reg_Name_use:str,str_Tab:str,modinst_var:str,errCount_var:str, errCount_Write_var:str, bModuleLoop:bool):
+    filed_resetChk_str = ''
+    field_WriteChk_str = ''
+    bRegLoop = reg.dim >1
+    for fd in reg.fields:
+        fd_name=fd.name.upper()
+        if fd_name.startswith('RESERVED'): #reserved
+            continue
+        if fd.defaultValue == 'X':
+            continue
+        if reg.nValidFdCount in (0,1):
+            reg_fd_var = f'{reg_Name_use}'
+            pass
+        else:
+            reg_fd_var = f'{reg_Name_use}.{fd.name}'
+        fd_var = reg_fd_var
+        if bRegLoop :
+            fd_var = reg_fd_var.replace('[ri]','[%u]')
+        module_fd_var = f'{modinst_var}->{reg_fd_var}'
+        nBitWid = fd.bitWidth
+        fdAccess = fd.access.upper()
+        if fdAccess.find('R') != -1:
+            filed_resetChk_str += f'{str_Tab}nRegFdVal = {module_fd_var};\n'
+            filed_resetChk_str += f'{str_Tab}if(nRegFdVal != {fd.defaultValue})\n'
+            filed_resetChk_str += str_Tab + '{\n'
+            filed_resetChk_str += f'{str_Tab}{cst_tab_str}Print_time();\n'
+            if bRegLoop :
+                if bModuleLoop:
+                    filed_resetChk_str += f'{str_Tab}{cst_tab_str}Error("Inst_%u # {fd_var}  [0x%X] is NOt same! \\n", mi, ri, nRegFdVal);\n'
+                else:
+                    filed_resetChk_str += f'{str_Tab}{cst_tab_str}Error("{fd_var}  [0x%X] is NOt same! \\n",ri,nRegFdVal);\n'
+                    pass
+            else:
+                if bModuleLoop :
+                    filed_resetChk_str += f'{str_Tab}{cst_tab_str}Error("Inst_%u # {fd_var}  [0x%X] is NOt same! \\n", mi, nRegFdVal);\n'
+                else:
+                    filed_resetChk_str += f'{str_Tab}{cst_tab_str}Error("{fd_var}  [0x%X] is NOt same! \\n",nRegFdVal);\n'
+                    pass
+            filed_resetChk_str += f'{str_Tab}{cst_tab_str}++{errCount_var};\n'
+            filed_resetChk_str += str_Tab + '}\n'
+            if bRegLoop :
+                if bModuleLoop:
+                    filed_resetChk_str += f'{str_Tab}else\n{str_Tab}{cst_tab_str}Info("Inst_%u # {fd_var} Value is OK. \\n", mi);\n'
+                else:
+                    filed_resetChk_str += f'{str_Tab}else\n{str_Tab}{cst_tab_str}Info("{fd_var} Value is OK. \\n", mi);\n'
+            else:
+                if bModuleLoop:
+                    filed_resetChk_str += f'{str_Tab}else\n{str_Tab}{cst_tab_str}Info("Inst_%u # {fd_var} Value is OK. \\n");\n'
+                else:
+                    filed_resetChk_str += f'{str_Tab}else\n{str_Tab}{cst_tab_str}Info("{fd_var} Value is OK. \\n");\n'
+
+        if fdAccess == 'RW':
+            if len(fd.enumValues) > 1:
+                strfdMask = fd.enumValues[-1].value
+                field_WriteChk_str += fieldWriteChk_func(
+                    errCount_Write_var,  str_Tab, fd_var, module_fd_var, strfdMask)
+
+                strfdMask = fd.enumValues[0].value
+                field_WriteChk_str+=fieldWriteChk_func(
+                    errCount_Write_var,  str_Tab, fd_var, module_fd_var, strfdMask)
+            else:
+                strfdMask = f'{bitWidMask_arr[nBitWid-1]}'
+                field_WriteChk_str += fieldWriteChk_func(
+                    errCount_Write_var,  str_Tab, fd_var, module_fd_var, strfdMask)
+
+                strfdMask = 0
+                field_WriteChk_str += fieldWriteChk_func(
+                    errCount_Write_var,  str_Tab, fd_var, module_fd_var, strfdMask)
+        pass
+    return filed_resetChk_str, field_WriteChk_str
+
+def getModule_Reg_FdChkStr(reg:St_Register,paretn_clu_name:str,errCount_var:str, errCount_Write_var:str, modinst_var:str,bForLoop: bool = True):
+    filed_resetChk_str = ''
+    field_WriteChk_str = ''
+    str_Tab = cst_tab_str
+    if bForLoop:
+        str_Tab = cst_tab_str + cst_tab_str
+    regName = reg.getRegName().upper()
+    if reg.alternateGroupName:
+        reg_Name_use = reg.alternateGroupName + '.'+regName
+    else:
+        reg_Name_use = regName
+    if paretn_clu_name:
+        reg_Name_use = paretn_clu_name+'.'+reg_Name_use
+    if reg.dim > 1 :
+        reg_Name_use = reg_Name_use + '[ri]'
+        str1,str2 = getModule_Reg_FdChkStr_impl(reg,reg_Name_use,str_Tab + cst_tab_str,modinst_var,errCount_var,errCount_Write_var,bForLoop)
+        if str1:
+            filed_resetChk_str += f'{str_Tab}for(int ri=0; ri<{reg.dim}; ++ri)\n'
+            filed_resetChk_str += str_Tab + '{\n'
+            filed_resetChk_str += str1
+            filed_resetChk_str += str_Tab + '}\n'
+        if str2:
+            field_WriteChk_str += f'{str_Tab}for(int ri=0; ri<{reg.dim}; ++ri)\n'
+            field_WriteChk_str += str_Tab + '{\n'
+            field_WriteChk_str += str2
+            field_WriteChk_str += str_Tab + '}\n'
+        pass
+    else:
+        str1,str2 = getModule_Reg_FdChkStr_impl(reg,reg_Name_use,str_Tab,modinst_var,errCount_var,errCount_Write_var,bForLoop)
+        filed_resetChk_str += str1
+        field_WriteChk_str += str2
+        pass
+
+    return filed_resetChk_str, field_WriteChk_str
+
+def getModule_FdChkStr(mod_inst:St_Peripheral, errCount_var:str, errCount_Write_var:str, modinst_var:str,bForLoop: bool = True):
+    file_resetChk_str = ''
+    field_WriteChk_str = '#ifdef CHECK_MOUDLE_FIELD_WRITE_VALUE\n'
+    # str_Tab = cst_tab_str
+    # if bForLoop:
+    #     str_Tab = cst_tab_str + cst_tab_str
+    # mod_name = mod_inst.module_name
+    for reg in mod_inst.clust_reg_lst:
+        if isinstance(reg,St_Cluster):
+            if reg.name == 'RESERVED':
+                continue
+            str1,str2 = getModule_Clu_FdChkStr(reg,errCount_var,errCount_Write_var,modinst_var,bForLoop)
+            file_resetChk_str += str1
+            field_WriteChk_str += str2
+            pass
+        elif isinstance(reg,St_Register):
+            if reg.name == 'RESERVED':
+                continue
+            str1,str2 = getModule_Reg_FdChkStr(reg,'',errCount_var,errCount_Write_var,modinst_var,bForLoop)
+            file_resetChk_str += str1
+            field_WriteChk_str += str2
+            pass
+        pass
+
+    # fieldWriteCheckstr += '#endif //CHECK_MOUDLE_FIELD_WRITE_VALUE\n'
+    return file_resetChk_str, field_WriteChk_str
+
+def output_C_FdValChk_moduleFile(module_inst_list:list, modName:str):
+    # print(modName)
+    out_C_file_Name=''
+    if sys.platform == 'win32':
+        dirName = './module_check/'+modName
+        if not os.path.exists(dirName):
+            os.makedirs(dirName)
+        out_C_file_Name = dirName+'/main.c'
+    elif sys.platform == 'linux':
+        dirName = os.path.join(get_output_c_dir(), modName.lower()+'_reg_c_reg_test')
+        out_C_file_Name = dirName+'_main.c'
+    with open(out_C_file_Name, 'w+') as out_file:
+        fileHeader = """// Autor: Auto generate by python From module excel\n
+// Version: 0.0.2 X
+// Description : field default value check for module instance \n
+// Waring: Do NOT Modify it !
+"""
+
+        today = date.today()
+        fileHeader += f'// Copyright (C) {today.year} CIP United Co. Ltd.  All Rights Reserved.\n'
+        fileHeader += """
+#define DEBUG
+//#define INFO
+#define WARNING
+#define NOTICE
+#define ERROR
+#define PASS
+#define FAIL
+
+#define CHECK_MODULE_FIELD_DEFAULT_VALUE
+
+#define CHECK_MOUDLE_FIELD_WRITE_VALUE
+
+#include <stdio.h>
+#include <time.h>
+
+// void getCurrentTimeStr(char* const szTimeBuf,int nBufSize ){
+//     struct timespec ts;
+//     timespec_get(&ts, TIME_UTC);
+//     struct tm * lct = localtime(&ts.tv_sec);
+//     sprintf_s(szTimeBuf,nBufSize,"time: %02d %02d:%02d:%02d [%09ld]", lct->tm_mday,lct->tm_hour,lct->tm_min,lct->tm_sec,ts.tv_nsec);
+// }
+
+// include "log.h"
+// include "pll.h"
+
+"""
+
+        for perip in module_inst_list:
+            perip_str = f'#define {perip.name}_BASE'.ljust(cst_Perip_SpaceSize)+f'({perip.getDirectAddrStr()})\n'
+            fileHeader += perip_str
+
+        filebodystr = f'\n#include "../../reg/{modName.lower()}_regs.h"\n'
+        filebodystr += """
+int main()
+{
+    //printf("enter main.\\n");
+    uAptiv_clk_init();
+"""
+        
+        mod_inst = module_inst_list[0]
+        module_Name = mod_inst.headerStructName.upper()
+        module_st_name = f'{module_Name}_t'
+        filebodystr += f'{cst_tab_str}printf("After clock switch, Now Check Module: {modName}.\\n");\n'
+        filebodystr += f'{cst_tab_str}unsigned int nRegFdVal = 0;\n'
+        filebodystr += f'{cst_tab_str}unsigned int nTotalErr = 0;\n'
+
+        mod_count = len(module_inst_list)
+        if mod_count > 1:
+            filebodystr += f'{cst_tab_str}{module_st_name} * module_inst[{mod_count}] = ' + \
+                '{'+f'{mod_inst.name}'
+            for i in range(1, mod_count):
+                filebodystr += f'\n{cst_tab_str}{cst_tab_str},{module_inst_list[i].name}'
+            filebodystr += '};\n\n'
+            filebodystr += '#ifdef CHECK_MODULE_FIELD_DEFAULT_VALUE\n'
+            filebodystr += f'{cst_tab_str}unsigned int nErrCount_default[{mod_count}] = '+'{0};\n'
+            filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
+
+            filebodystr += '#ifdef CHECK_MOUDLE_FIELD_WRITE_VALUE\n'
+            filebodystr += f'{cst_tab_str}unsigned int nErrCount_wirte[{mod_count}] = '+'{0};\n'
+            filebodystr += '#endif // CHECK_MOUDLE_FIELD_WRITE_VALUE\n\n'
+
+            filebodystr += f'{cst_tab_str}for(int mi = 0; mi < {mod_count}; ++mi)\n'
+            filebodystr += cst_tab_str + '{\n'
+            filebodystr += '#ifdef CHECK_MODULE_FIELD_DEFAULT_VALUE\n'
+            modinst_var = 'module_inst[mi]'
+            errCount_var = 'nErrCount_default[mi]'
+            errCount_write_var = 'nErrCount_wirte[mi]'
+            str1, str2 = getModule_FdChkStr(mod_inst, errCount_var, errCount_write_var, modinst_var)
+            filebodystr += str1
+            filebodystr += f'{cst_tab_str}{cst_tab_str}if(nErrCount_default[mi])\n'
+            filebodystr += cst_tab_str+cst_tab_str+'{\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}Error("Inst_%u def-Vals have [%u] fds NOT Same!\\n", mi, nErrCount_default[mi]);\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_default[mi];\n'
+            filebodystr += cst_tab_str+cst_tab_str+'}\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}{cst_tab_str}Notice("Inst_%u def-Vals are OK!\\n", mi);\n'
+            filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
+
+            filebodystr += str2
+            filebodystr += f'{cst_tab_str}{cst_tab_str}if(nErrCount_wirte[mi])\n'
+            filebodystr += cst_tab_str+cst_tab_str+'{\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}Error("Inst_%u write-Vals have [%u] fds NOT Same!\\n", mi, nErrCount_wirte[mi]);\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_wirte[mi];\n'
+            filebodystr += cst_tab_str+cst_tab_str+'}\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}{cst_tab_str}Notice("Inst_%u write-Vals are OK!\\n", mi);\n'
+            filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
+            filebodystr += cst_tab_str+'}\n'
+        elif mod_count == 1:
+            filebodystr += f'{cst_tab_str}{module_st_name} * module_inst = {mod_inst.name} ;\n'
+            filebodystr += '#ifdef CHECK_MODULE_FIELD_DEFAULT_VALUE\n'
+            filebodystr += f'{cst_tab_str}unsigned int nErrCount_default = 0;\n'
+            filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
+
+            filebodystr += '#ifdef CHECK_MOUDLE_FIELD_WRITE_VALUE\n'
+            filebodystr += f'{cst_tab_str}unsigned int nErrCount_wirte = 0;\n'
+            filebodystr += '#endif // CHECK_MOUDLE_FIELD_WRITE_VALUE\n\n'
+
+            modinst_var = 'module_inst'
+            errCount_var = 'nErrCount_default'
+            errCount_write_var = 'nErrCount_wirte'
+            # filebodystr += getModuleFdStr(mod_inst,
+            #                               errCount_var, modinst_var, False)
+            str1, str2 = getModule_FdChkStr(mod_inst, errCount_var, errCount_write_var, modinst_var, False)
+
+            filebodystr += str1
+
+            filebodystr += f'{cst_tab_str}{cst_tab_str}if(nErrCount_default)\n'
+            filebodystr += cst_tab_str+cst_tab_str+'{\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}Error("Inst_%u def-Vals have [%u] fds NOT Same!\\n", mi, nErrCount_default);\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_default;\n'
+            filebodystr += cst_tab_str+cst_tab_str+'}\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}{cst_tab_str}Notice("Inst_%u def-Vals are OK!\\n", mi);\n'
+            filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
+
+            filebodystr += str2
+            filebodystr += f'{cst_tab_str}{cst_tab_str}if(nErrCount_wirte)\n'
+            filebodystr += cst_tab_str+cst_tab_str+'{\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}Error("Inst_%u write-Vals have [%u] fds NOT Same!\\n", mi, nErrCount_wirte);\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_wirte;\n'
+            filebodystr += cst_tab_str+cst_tab_str+'}\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}{cst_tab_str}Notice("Inst_%u write-Vals are OK!\\n", mi);\n'
+            filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
+
+       
+        filebodystr += f'{cst_tab_str}if(nTotalErr == 0)\n'
+        filebodystr += f'{cst_tab_str}{cst_tab_str}Pass("{modName} Vals OK!\\n");\n'
+        filebodystr += f'{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}Fail("{modName} Vals Not OK!\\n");\n'
+        filebodystr += f'\n{cst_tab_str}return 0;\n'+'}\n'
+        out_file.write(fileHeader)
+        out_file.write(filebodystr)
+        out_file.close()
+
+        return out_C_file_Name
+
+
+def getHexStr(var: int|str):
     if isinstance(var,int):
         e_val = hex(var)
         hxstr=hex(var)
@@ -2253,7 +2526,7 @@ def getHexStr(var):
             return var_up[2:]
 
 
-def getRegFieldInfo_uvm_sv(clu_reg: St_Register,moduleName:str,cluster_level = 0):
+def getRegFieldInfo_uvm_sv(clu_reg: St_Register,moduleName:str,cluster_level: int = 0):
     regName = clu_reg.name.upper()
     cls_reg_str = ''
     cls_constraint_str =''
@@ -2384,7 +2657,7 @@ def getRegFieldInfo_uvm_sv(clu_reg: St_Register,moduleName:str,cluster_level = 0
     
     return cls_reg_name,block_build_str,cls_reg_str
 
-def getRegFieldInfo_Ralf(tab_str, clu_reg: St_Register,baseOffset:int):
+def getRegFieldInfo_Ralf(tab_str:str, clu_reg: St_Register,baseOffset:int):
     regName = clu_reg.name.upper()
     fileHeader = ''
     if regName != 'RESERVED': #Reserved
@@ -2467,7 +2740,7 @@ def out_sys_uvm_sv(st_dev: St_Device):
     #基于domain
     pass    
 
-def getCluRegStructInfo_uvm_sv(clust_reg_lst, module_name:str,clu_name:str, nChild_level:int):
+def getCluRegStructInfo_uvm_sv(clust_reg_lst:list, module_name:str,clu_name:str, nChild_level:int):
     clu_reg_str = ''
     clu_blcok_str = ''
     clu_build_str = ''
@@ -2537,7 +2810,7 @@ def getCluRegStructInfo_uvm_sv(clust_reg_lst, module_name:str,clu_name:str, nChi
 
 
 
-def getCluRegStructInfo_Ralf(clust_reg_lst, struct_Name, nChild_level = 0, baseOffset = 0):
+def getCluRegStructInfo_Ralf(clust_reg_lst:list, struct_Name:str, nChild_level:int = 0, baseOffset:int = 0):
     cst_newLine_tab_str= ''
     for l in range(nChild_level):
         cst_newLine_tab_str += cst_tab_str
@@ -2561,7 +2834,7 @@ def getCluRegStructInfo_Ralf(clust_reg_lst, struct_Name, nChild_level = 0, baseO
     return fileHeader
 
 
-def getCluRegStructInfo_C(clust_reg_lst, struct_name, nPLastOffset,nChild_level = 0):
+def getCluRegStructInfo_C(clust_reg_lst:list, struct_name:str, nPLastOffset:int,nChild_level:int = 0):
     cst_newLine_tab_str= ''
     for l in range(nChild_level):
         cst_newLine_tab_str += cst_tab_str
@@ -2609,7 +2882,7 @@ def getCluRegStructInfo_C(clust_reg_lst, struct_name, nPLastOffset,nChild_level 
 
 
 
-def getRegFieldInfo_C(tab_str, clu_reg: St_Register ,moduleName,nRegReservedIndex, nLastOffset):
+def getRegFieldInfo_C(tab_str:str, clu_reg: St_Register ,moduleName:str,nRegReservedIndex:int, nLastOffset:int):
     # 需要增加 dim 部分的处理逻辑
     fileHeader = ''
     retOpstr = f'/**\n * @name {clu_reg.name} - {clu_reg.description}, Offset: {clu_reg.addressOffset}\n * @'+'{\n */\n'
@@ -2680,88 +2953,91 @@ def getRegFieldInfo_C(tab_str, clu_reg: St_Register ,moduleName,nRegReservedInde
         pass
     else:
         regFdStr=''
-        nValidFdCount=0
+        nValidFdCount = clu_reg.nValidFdCount
 
-        if clu_reg.fields:
-            regFdStr = 'struct {\n'
-            curBitPos=0
-            reservedindex =0
-            for fd in clu_reg.fields:
-                if isinstance(fd,St_Field):
-                    row_str=''
-                    fd_Op_str = ''
-                    fd_head_str = fd_body_str = ''
-
-                    if fd.bitOffset > curBitPos:
-                        #添加reserved
-                        row_str+=f'{row_fd_tab_str}{uint_str} reserved{reservedindex}: {curBitPos - fd.bitOffset};'
-                        reservedindex += 1
-                        nValidFdCount += 1
-
-                    curBitPos = fd.bitOffset + fd.bitWidth
-                    
-                    if fd.name == 'RESERVED':
-                        if curBitPos != clu_reg.size:
-                            #最上面的保留字段，不生成
-                            row_str+=f'{row_fd_tab_str}{uint_str} reserved{reservedindex}: {fd.bitWidth};'
-                            reservedindex+=1
-                        else:
-                            continue
-                    else:
-                        nValidFdCount += 1
-                        row_str+=f'{row_fd_tab_str}{uint_str} {fd.name}: {fd.bitWidth};'
-
-                        endBit = fd.bitWidth + fd.bitOffset - 1
-                        fd_head_str = f'/** Bit[{endBit}:{fd.bitOffset}] {fd.name}  - {fd.access}, {fd.description}\n'
-                        if fd.writeConstraint == 'range':
-                            fd_head_str += f' * Range: ( {fd.range_min} --{fd.range_max})\n'
-                            pass
-
-                        regFdName = f'{moduleName}_{clu_reg.name}_{fd.name}'
-                        regFdPos = f'{regFdName}_POS'
-                        regFdOpStr = f'#define {regFdPos}'
-                        regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
-                        regFdOpStr += f'{fd.bitOffset}U\n'
-                        fd_body_str += regFdOpStr
-                        regFdMsk = f'{regFdName}_MSK'
-                        regFdOpStr = f'#define {regFdMsk}'
-                        regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
-                        markVal = bitWidMask_arr[fd.bitWidth-1]
-                        regFdOpStr += f'(({uint_str}) {markVal} << {regFdPos})\n'
-                        fd_body_str += regFdOpStr
-                        if fd.enumValues:
-                            #仅定义 enum 
-                            for e in fd.enumValues:
-                                enumName=e.name.upper()
-                                regFdOpStr = f'#define {regFdName}_{enumName}'
-                                regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
-                                regFdOpStr += f'({e.value}U << {regFdPos})\n'
-                                fd_body_str += regFdOpStr
-
-                                fd_head_str += f' * - {e.value} : {e.desc}\n'
-                            pass
-                        else:
-                            regFdOpStr = f'#define {regFdName}_GET(val)'
-                            regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
-                            regFdOpStr += f'(({uint_str}) ((val) & {regFdMsk}) >> {regFdPos})\n'
-                            fd_body_str += regFdOpStr
-                            if fd.access.find('W') != -1:
-                                regFdOpStr = f'#define {regFdName}_SET(val)'
-                                regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
-                                regFdOpStr += f'(({uint_str}) ((val) & {markVal}) << {regFdPos})\n'
-                                fd_body_str += regFdOpStr
-                        fd_head_str += ' */\n'
-
-                    fd_Op_str = fd_head_str + fd_body_str +'\n'
-                    retOpstr += fd_Op_str
-                    row_str = row_str.ljust(cst_RegField_SpaceSize)
-                    row_str += f'/*!< bitOffset: {fd.bitOffset} ({fd.access}), {fd.description} */\n'
-                    regFdStr += row_str
-            # regFdStr += row_tab_str+'}'
         if nValidFdCount in (0,1) :
             lastRow_str = fileHeader + uint_str
             fileHeader = ''
         else:
+            if clu_reg.fields:
+                regFdStr = 'struct {\n'
+                curBitPos=0
+                reservedindex =0
+                for fd in clu_reg.fields:
+                    if isinstance(fd,St_Field):
+                        row_str=''
+                        fd_Op_str = ''
+                        fd_head_str = fd_body_str = ''
+
+                        if fd.bitOffset > curBitPos:
+                            #添加reserved
+                            row_str+=f'{row_fd_tab_str}{uint_str} reserved{reservedindex}: {curBitPos - fd.bitOffset};'
+                            reservedindex += 1
+                            nValidFdCount += 1
+
+                        curBitPos = fd.bitOffset + fd.bitWidth
+                        
+                        if fd.name == 'RESERVED':
+                            if curBitPos != clu_reg.size:
+                                #最上面的保留字段，不生成
+                                row_str+=f'{row_fd_tab_str}{uint_str} reserved{reservedindex}: {fd.bitWidth};'
+                                reservedindex+=1
+                            else:
+                                continue
+                        else:
+                            nValidFdCount += 1
+                            row_str+=f'{row_fd_tab_str}{uint_str} {fd.name}: {fd.bitWidth};'
+
+                            endBit = fd.bitWidth + fd.bitOffset - 1
+                            fd_head_str = f'/** Bit[{endBit}:{fd.bitOffset}] {fd.name}  - {fd.access}, {fd.description}\n'
+                            if fd.writeConstraint == 'range':
+                                fd_head_str += f' * Range: ( {fd.range_min} --{fd.range_max})\n'
+                                pass
+
+                            regFdName = f'{moduleName}_{clu_reg.name}_{fd.name}'
+                            regFdPos = f'{regFdName}_POS'
+                            regFdOpStr = f'#define {regFdPos}'
+                            regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
+                            regFdOpStr += f'{fd.bitOffset}U\n'
+                            fd_body_str += regFdOpStr
+                            regFdMsk = f'{regFdName}_MSK'
+                            regFdOpStr = f'#define {regFdMsk}'
+                            regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
+                            markVal = bitWidMask_arr[fd.bitWidth-1]
+                            regFdOpStr += f'(({uint_str}) {markVal} << {regFdPos})\n'
+                            fd_body_str += regFdOpStr
+                            if fd.enumValues:
+                                #仅定义 enum 
+                                for e in fd.enumValues:
+                                    enumName=e.name.upper()
+                                    regFdOpStr = f'#define {regFdName}_{enumName}'
+                                    regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
+                                    regFdOpStr += f'({e.value}U << {regFdPos})\n'
+                                    fd_body_str += regFdOpStr
+
+                                    fd_head_str += f' * - {e.value} : {e.desc}\n'
+                                pass
+                            else:
+                                regFdOpStr = f'#define {regFdName}_GET(val)'
+                                regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
+                                regFdOpStr += f'(({uint_str}) ((val) & {regFdMsk}) >> {regFdPos})\n'
+                                fd_body_str += regFdOpStr
+                                if fd.access.find('W') != -1:
+                                    regFdOpStr = f'#define {regFdName}_SET(val)'
+                                    regFdOpStr = regFdOpStr.ljust(cst_RegField_SpaceSize)
+                                    regFdOpStr += f'(({uint_str}) ((val) & {markVal}) << {regFdPos})\n'
+                                    fd_body_str += regFdOpStr
+                            fd_head_str += ' */\n'
+
+                        fd_Op_str = fd_head_str + fd_body_str +'\n'
+                        retOpstr += fd_Op_str
+                        row_str = row_str.ljust(cst_RegField_SpaceSize)
+                        row_str += f'/*!< bitOffset: {fd.bitOffset} ({fd.access}), {fd.description} */\n'
+                        regFdStr += row_str
+                        pass
+                    pass
+                pass
+            # regFdStr += row_tab_str+'}'
             fileHeader += regFdStr
             lastRow_str = row_tab_str+'}'
         lastRow_str += ' ' + clu_reg.getRegName()
@@ -3171,7 +3447,7 @@ def getRegFieldInfo_C(tab_str, clu_reg: St_Register ,moduleName,nRegReservedInde
     # return fdWriteCheckstr
 
 
-def checkDeviceSheet(ws):
+def checkDeviceSheet(ws:worksheet):
     name = ws['B3'].value
     st_dev = St_Device(name)
     vendor = ws['B2'].value
@@ -3333,7 +3609,7 @@ def checkDeviceSheet(ws):
     return st_dev
 
 
-def dealwith_excel(xls_file, outFlag=1):
+def dealwith_excel(xls_file:str, outFlag:int = 1):
     # "UART_final_202301010.xls"
     wb = load_workbook(xls_file, data_only=True)
     sheetNames = wb.sheetnames
@@ -3361,7 +3637,8 @@ def dealwith_excel(xls_file, outFlag=1):
                     module_file_lst.append(mod_file)
                     output_ralf_moduleFile(perip_lst,sh_name,st_dev.version)
                     output_uvm_sv_moduleFile(perip_lst,sh_name,st_dev.version)
-                    output_SequenceSv_moduleFile(perip_lst[0:1],sh_name,st_dev.version)
+                    output_SequenceSv_moduleFile(perip_lst[0:3],sh_name,st_dev.version)
+                    output_C_FdValChk_moduleFile(perip_lst[0:3],sh_name)
                 st_dev.peripherals[sh_name] = perip_lst
                 if irq_set and isinstance(irq_set,set):
                     st_dev.interrupts.update(irq_set)
