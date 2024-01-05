@@ -8,3 +8,4 @@
 *.exe
 *.json
 /uvm
+/module_check

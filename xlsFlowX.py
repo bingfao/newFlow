@@ -2222,12 +2222,82 @@ def fieldWriteChk_func(errCount_Write_var:str, str_Tab:str, fd_var:str, module_f
     return fdWriteCheckstr
 
 
-def getModule_Clu_FdChkStr(clu:St_Cluster,errCount_var:str, errCount_Write_var:str, modinst_var:str,bForLoop: bool = True):
+def getModule_Clu_FdChkStr(clu:St_Cluster,paretn_clu_name:str,tab_str:str,errCount_var:str, errCount_Write_var:str, modinst_var:str,bModuleLoop: bool = True,nCluevel:int =0):
     filed_resetChk_str = ''
     field_WriteChk_str = ''
+    bCluLoop = False
+    str_Tab = tab_str
+    if bModuleLoop:
+        str_Tab += cst_tab_str
+    cluName = clu.name
+    if clu.dim > 1 and nCluevel == 0 :
+        cluName += '[ci]'
+        bCluLoop = True
+    if paretn_clu_name:
+        cluName = paretn_clu_name+'.'+cluName
+    for reg in clu.clusters:
+        if isinstance(reg,St_Register):
+            if bCluLoop:
+                str1,str2 = getModule_Reg_FdChkStr(reg,cluName,str_Tab+cst_tab_str,errCount_var,errCount_Write_var,modinst_var,bModuleLoop)
+                if str1:
+                    filed_resetChk_str += f'{str_Tab}for(int ci=0; ci<{reg.dim}; ++ci)\n'
+                    filed_resetChk_str += str_Tab + '{\n'
+                    filed_resetChk_str += str1
+                    filed_resetChk_str += str_Tab + '}\n'
+                if str2:
+                    field_WriteChk_str += f'{str_Tab}for(int ci=0; ci<{reg.dim}; ++ci)\n'
+                    field_WriteChk_str += str_Tab + '{\n'
+                    field_WriteChk_str += str2
+                    field_WriteChk_str += str_Tab + '}\n'
+                pass
+            else:
+                if clu.dim >1: 
+                    for i in clu.dim:
+                        cluNameUse = cluName + f'[{i}]'
+                        str1,str2 = getModule_Reg_FdChkStr(reg,cluNameUse,str_Tab,errCount_var,errCount_Write_var,modinst_var,bModuleLoop)
+                        filed_resetChk_str += str1
+                        field_WriteChk_str += str2
+                        pass
+                    pass
+                else:
+                    str1,str2 = getModule_Reg_FdChkStr(reg,cluName,str_Tab,errCount_var,errCount_Write_var,modinst_var,bModuleLoop)
+                    filed_resetChk_str += str1
+                    field_WriteChk_str += str2
+                pass
+        elif isinstance(reg,St_Cluster):
+            if bCluLoop:
+                str1,str2 = getModule_Clu_FdChkStr(reg,cluName,str_Tab+cst_tab_str,errCount_var,errCount_Write_var,modinst_var,bModuleLoop,nCluevel+1)
+                if str1:
+                    filed_resetChk_str += f'{str_Tab}for(int ci=0; ci<{reg.dim}; ++ci)\n'
+                    filed_resetChk_str += str_Tab + '{\n'
+                    filed_resetChk_str += str1
+                    filed_resetChk_str += str_Tab + '}\n'
+                if str2:
+                    field_WriteChk_str += f'{str_Tab}for(int ci=0; ci<{reg.dim}; ++ci)\n'
+                    field_WriteChk_str += str_Tab + '{\n'
+                    field_WriteChk_str += str2
+                    field_WriteChk_str += str_Tab + '}\n'
+                pass
+            else:
+                if clu.dim >1: 
+                    for i in clu.dim:
+                        cluNameUse = cluName + f'[{i}]'
+                        str1,str2 = getModule_Clu_FdChkStr(reg,cluNameUse,str_Tab,errCount_var,errCount_Write_var,modinst_var,bModuleLoop,nCluevel+1)
+                        filed_resetChk_str += str1
+                        field_WriteChk_str += str2
+                        pass
+                    pass
+                else:
+                    str1,str2 = getModule_Clu_FdChkStr(reg,cluName,str_Tab,errCount_var,errCount_Write_var,modinst_var,bModuleLoop,nCluevel+1)
+                    filed_resetChk_str += str1
+                    field_WriteChk_str += str2
+                    pass
+                pass
+            pass
+        pass
     return filed_resetChk_str, field_WriteChk_str
 
-def getModule_Reg_FdChkStr_impl(reg:St_Register,reg_Name_use:str,str_Tab:str,modinst_var:str,errCount_var:str, errCount_Write_var:str, bModuleLoop:bool):
+def getModule_Reg_FdChkStr_impl(reg:St_Register,reg_Name_use:str,str_Tab:str,modinst_var:str,errCount_var:str, errCount_Write_var:str,bModuleLoop:bool):
     filed_resetChk_str = ''
     field_WriteChk_str = ''
     bRegLoop = reg.dim >1
@@ -2298,12 +2368,10 @@ def getModule_Reg_FdChkStr_impl(reg:St_Register,reg_Name_use:str,str_Tab:str,mod
         pass
     return filed_resetChk_str, field_WriteChk_str
 
-def getModule_Reg_FdChkStr(reg:St_Register,paretn_clu_name:str,errCount_var:str, errCount_Write_var:str, modinst_var:str,bForLoop: bool = True):
+def getModule_Reg_FdChkStr(reg:St_Register,paretn_clu_name:str, base_tab_str:str,errCount_var:str, errCount_Write_var:str, modinst_var:str,bModuleLoop: bool = True):
     filed_resetChk_str = ''
     field_WriteChk_str = ''
-    str_Tab = cst_tab_str
-    if bForLoop:
-        str_Tab = cst_tab_str + cst_tab_str
+    str_Tab = base_tab_str
     regName = reg.getRegName().upper()
     if reg.alternateGroupName:
         reg_Name_use = reg.alternateGroupName + '.'+regName
@@ -2313,7 +2381,7 @@ def getModule_Reg_FdChkStr(reg:St_Register,paretn_clu_name:str,errCount_var:str,
         reg_Name_use = paretn_clu_name+'.'+reg_Name_use
     if reg.dim > 1 :
         reg_Name_use = reg_Name_use + '[ri]'
-        str1,str2 = getModule_Reg_FdChkStr_impl(reg,reg_Name_use,str_Tab + cst_tab_str,modinst_var,errCount_var,errCount_Write_var,bForLoop)
+        str1,str2 = getModule_Reg_FdChkStr_impl(reg,reg_Name_use,str_Tab + cst_tab_str,modinst_var,errCount_var,errCount_Write_var,bModuleLoop)
         if str1:
             filed_resetChk_str += f'{str_Tab}for(int ri=0; ri<{reg.dim}; ++ri)\n'
             filed_resetChk_str += str_Tab + '{\n'
@@ -2326,32 +2394,32 @@ def getModule_Reg_FdChkStr(reg:St_Register,paretn_clu_name:str,errCount_var:str,
             field_WriteChk_str += str_Tab + '}\n'
         pass
     else:
-        str1,str2 = getModule_Reg_FdChkStr_impl(reg,reg_Name_use,str_Tab,modinst_var,errCount_var,errCount_Write_var,bForLoop)
+        str1,str2 = getModule_Reg_FdChkStr_impl(reg,reg_Name_use,str_Tab,modinst_var,errCount_var,errCount_Write_var,bModuleLoop)
         filed_resetChk_str += str1
         field_WriteChk_str += str2
         pass
 
     return filed_resetChk_str, field_WriteChk_str
 
-def getModule_FdChkStr(mod_inst:St_Peripheral, errCount_var:str, errCount_Write_var:str, modinst_var:str,bForLoop: bool = True):
+def getModule_FdChkStr(mod_inst:St_Peripheral, errCount_var:str, errCount_Write_var:str, modinst_var:str,bModuleLoop: bool = True):
     file_resetChk_str = ''
     field_WriteChk_str = '#ifdef CHECK_MOUDLE_FIELD_WRITE_VALUE\n'
-    # str_Tab = cst_tab_str
-    # if bForLoop:
-    #     str_Tab = cst_tab_str + cst_tab_str
+    str_Tab = cst_tab_str
+    if bModuleLoop:
+        str_Tab += cst_tab_str
     # mod_name = mod_inst.module_name
     for reg in mod_inst.clust_reg_lst:
         if isinstance(reg,St_Cluster):
             if reg.name == 'RESERVED':
                 continue
-            str1,str2 = getModule_Clu_FdChkStr(reg,errCount_var,errCount_Write_var,modinst_var,bForLoop)
+            str1,str2 = getModule_Clu_FdChkStr(reg,'',str_Tab,errCount_var,errCount_Write_var,modinst_var,bModuleLoop)
             file_resetChk_str += str1
             field_WriteChk_str += str2
             pass
         elif isinstance(reg,St_Register):
             if reg.name == 'RESERVED':
                 continue
-            str1,str2 = getModule_Reg_FdChkStr(reg,'',errCount_var,errCount_Write_var,modinst_var,bForLoop)
+            str1,str2 = getModule_Reg_FdChkStr(reg,'',str_Tab,errCount_var,errCount_Write_var,modinst_var,bModuleLoop)
             file_resetChk_str += str1
             field_WriteChk_str += str2
             pass
@@ -2662,7 +2730,7 @@ def getRegFieldInfo_Ralf(tab_str:str, clu_reg: St_Register,baseOffset:int):
     fileHeader = ''
     if regName != 'RESERVED': #Reserved
         fileHeader = tab_str+'register ' + clu_reg.name
-        if clu_reg.dim:
+        if clu_reg.dim >1 :
             fileHeader += f'[{clu_reg.dim}]'
         offset_val = getIntValFromHexString(clu_reg.addressOffset) - baseOffset
         fileHeader += f' @{offset_val} ' +'{\n'
@@ -2822,7 +2890,10 @@ def getCluRegStructInfo_Ralf(clust_reg_lst:list, struct_Name:str, nChild_level:i
     
     for clu_reg in clust_reg_lst:
         if isinstance(clu_reg, St_Cluster):
-            clu_reg_str_info = getCluRegStructInfo_Ralf(clu_reg.clusters,clu_reg.name,nChild_level+1,getIntValFromHexString(clu_reg.addressOffset))
+            regFileName = clu_reg.name
+            if clu_reg.dim > 1:
+                regFileName += f'[clu_reg.dim]'
+            clu_reg_str_info = getCluRegStructInfo_Ralf(clu_reg.clusters,regFileName,nChild_level+1,getIntValFromHexString(clu_reg.addressOffset))
             fileHeader += clu_reg_str_info
             fileHeader += newLine_tab_str+'} ;\n'
             pass
@@ -2855,7 +2926,10 @@ def getCluRegStructInfo_C(clust_reg_lst:list, struct_name:str, nPLastOffset:int,
             clu_reg_str_info, clu_reg_Op_str,nLastOffset = getCluRegStructInfo_C(clu_reg.clusters,struct_name,nLastOffset,nChild_level+1)
             fileHeader += clu_reg_str_info
             fileRegFdOpstr += clu_reg_Op_str
-            fileHeader += newLine_tab_str+'} '+f'{clu_reg.name};\n'
+            fileHeader += newLine_tab_str+'} '+f'{clu_reg.name}'
+            if clu_reg.dim >1:
+                fileHeader += f'[{clu_reg.dim}]'
+            fileHeader += ';\n'
             pass
         elif isinstance(clu_reg, St_Register):
             if clu_reg.alternateGroupName:
