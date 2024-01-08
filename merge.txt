@@ -27,3 +27,17 @@ ErrHandler:
     MsgBox Err.Description
     Resume ExitHandler
 End Sub
+
+
+
+Sub sheet转独立文件()
+    Dim sht As Worksheet
+    Application.ScreenUpdating = False
+    ipath = ThisWorkbook.Path &"\"
+    For Each sht In Sheets
+        sht.Copy
+        ActiveWorkbook.SaveAs ipath & sht.Name
+        ActiveWorkbook.Close
+    Next
+    Application.ScreenUpdating = True
+End Sub
