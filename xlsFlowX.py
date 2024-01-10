@@ -14,10 +14,9 @@
 import math
 import re
 from datetime import date
-import os
 import os,sys
 import copy
-from sys import flags
+# from sys import flags
 from openpyxl import load_workbook
 from openpyxl.worksheet import worksheet
 from openpyxl.styles import colors, Border, Side, Font, Color
@@ -26,8 +25,8 @@ from openpyxl.styles import colors, Border, Side, Font, Color
 
 # import xlrd
 
-
-char_arr = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+cst_col_lst = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','AA','AB','AC','AD','AE','AF','AG']
+# char_arr = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 # busTypestr_arr = ("AHB", "AXI")
 bitWidMask_arr = ('0x01', '0x03', '0x07', '0x0F', '0x1F', '0x3F', '0x7F', '0xFF', '0x01FF', '0x03FF', '0x07FF', '0x0FFF', '0x1FFF', '0x3FFF', '0x7FFF', '0xFFFF',
                   '0x01FFFF', '0x03FFFF', '0x07FFFF', '0x0FFFFF', '0x1FFFFF', '0x3FFFFF', '0x7FFFFF', '0xFFFFFF', '0x01FFFFFF', '0x03FFFFFF', '0x07FFFFFF', '0x0FFFFFFF', '0x1FFFFFFF', '0x3FFFFFFF', '0x7FFFFFFF', '0xFFFFFFFF',
@@ -103,6 +102,7 @@ class St_CPU:
         self.itcmPresent = False
         self.dtcmPresent = False
         self.l2cachePresent = False
+        self.powerDomain = ''
 
     def get_inst_str(self):
         return f'name:{self.name},derivedFrom:{self.derivedFrom},revision:{self.revision},endian:{self.endian},srs:{self.srsPresent},mpu:{self.mpuPresent},fpu:{self.fpuPresent},dsp:{self.dspPresent},icache:{self.icachePresent},dcache:{self.dcachePresent},itcm:{self.itcmPresent},dtcm:{self.dtcmPresent},l2cache:{self.l2cachePresent}'
@@ -149,6 +149,8 @@ class St_Memory:
         self.usage = ''
         self.processor = ''
         self.description = ''
+        self.remap = False
+        self.powerDomain = ''
 
     def get_inst_str(self):
         return f'Memory:  name:{self.name},derivedFrom:{self.derivedFrom},addrBase:{self.baseAddress},addrOffset:{self.addressOffset},size:{self.size},access:{self.access},usage:{self.usage},proc:{self.processor},desc:{self.description}'
@@ -348,8 +350,8 @@ class St_Peripheral:
     def __init__(self, name):
         self.name = name
         self.derivedFrom = ''
-        self.processor = ''
-        self.aliasPeripheral = ''
+        # self.processor = ''
+        self.alternatePeripheral = ''
         self.prefixToName = ''
         self.suffixToName = ''
         self.moduleName = ''
@@ -358,17 +360,18 @@ class St_Peripheral:
         self.busInterface = ''
         self.headerStructName = ''
         self.baseAddress = ''
-        self.addrDerivedFrom = ''
+        self.memoryMap = ''
         self.addressOffset = ''
         self.addrBlocksRowindex = 0
         self.addressBlocks = []
         self.interuptsRowindex = 0
         self.interrupts = []
         self.clust_reg_lst = []  # cluster or register
+        self.memoryRemap = False
 
     def get_inst_str(self):
         inst_str = 'Peripheral: \n'
-        inst_str += f'name:{self.name}, derivedFrom:{self.derivedFrom},proc:{self.processor},alias:{self.aliasPeripheral},moduleName:{self.moduleName},instName:{self.instanceName},hStructName:{
+        inst_str += f'name:{self.name}, derivedFrom:{self.derivedFrom},proc:{self.processor},alias:{self.alternatePeripheral},moduleName:{self.moduleName},instName:{self.instanceName},hStructName:{
             self.headerStructName},prefix:{self.prefixToName},suffix:{self.suffixToName},addrBlocks:{self.addrBlocksRowindex},interupt:{self.interuptsRowindex},desc:{self.description}\n'
         for adb in self.addressBlocks:
             inst_str += '\t'+adb.get_inst_str()+'\n'
@@ -378,8 +381,8 @@ class St_Peripheral:
     
     def getAddrStr(self):
         addr_str = self.baseAddress
-        if self.addrDerivedFrom:
-            addr_str = self.addrDerivedFrom 
+        if self.memoryMap:
+            addr_str = self.memoryMap 
         addr_str += ' + '+ self.addressOffset
         return addr_str
     
@@ -391,9 +394,9 @@ class St_Peripheral:
 
     
     def toJson(self):
-        json_str = '{\n' f'"name": "{self.name}","derivedFrom": "{self.derivedFrom}","processor": "{self.processor}", "aliasPeripheral": "{self.aliasPeripheral}","prefixToName": "{self.prefixToName}","suffixToName": "{self.suffixToName}"'
+        json_str = '{\n' f'"name": "{self.name}","derivedFrom": "{self.derivedFrom}","processor": "{self.processor}", "aliasPeripheral": "{self.alternatePeripheral}","prefixToName": "{self.prefixToName}","suffixToName": "{self.suffixToName}"'
         json_str += f',"moduleName": "{self.moduleName}","instanceName": "{self.instanceName}","description": "{self.description}","busInterface": "{self.busInterface}","headerStructName": "{self.headerStructName}"'
-        json_str += f',"baseAddress": "{self.baseAddress}","addrDerivedFrom": "{self.addrDerivedFrom}","addressOffset": "{self.addressOffset}"'
+        json_str += f',"baseAddress": "{self.baseAddress}","addrDerivedFrom": "{self.memoryMap}","addressOffset": "{self.addressOffset}"'
         if self.addressBlocks:
             json_str += ',"addressBlocks": [\n'
             bNotFirst = False
@@ -651,15 +654,23 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
     struct_name = ''
     prefix_str = ''
     suffix_str = ''
-    while row < row_end:
+    # 线读取下表头信息
+    maxCols = ws.max_column + 1
+    perip_col_dict = {}
+    perip_row_header = 2
+    for col_i in range(1,maxCols):
+        val = ws.cell(perip_row_header,col_i).value
+        if val:
+            perip_col_dict[val] = col_i
+    while row < row_end:   #读取 peripheral 表内容
         if row not in emptyA_rows:
-            name = ws.cell(row, 2).value
+            name = ws.cell(row, perip_col_dict['name']).value
             st_perip = St_Peripheral(name)
-            alias = ws.cell(row, 7).value
-            derivedFrom = ws.cell(row, 1).value
-            if alias:
+            alternatePerip = ws.cell(row, perip_col_dict['alternatePeripheral']).value
+            derivedFrom = ws.cell(row, perip_col_dict['derivedFrom']).value
+            if alternatePerip:
                 for perip in perip_list:
-                    if perip.name == alias:
+                    if perip.name == alternatePerip:
                         st_perip = copy.copy(perip)
                         break
             else:
@@ -668,73 +679,78 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
                         if perip.name == derivedFrom:
                             st_perip = copy.copy(perip)
                             break
-            if alias:
-                st_perip.aliasPeripheral = alias
+            if alternatePerip:
+                st_perip.alternatePeripheral = alternatePerip
             if derivedFrom:
                 st_perip.derivedFrom = derivedFrom
             st_perip.name = name
 
-            addrDFrom = ws.cell(row, 3).value
-            if addrDFrom:
-                st_perip.addrDerivedFrom = addrDFrom
-            baseAddr = ws.cell(row, 4).value
+            memroyMap = ws.cell(row, perip_col_dict['memoryMap']).value
+            if memroyMap:
+                st_perip.memoryMap = memroyMap
+            baseAddr = ws.cell(row, perip_col_dict['baseAddress']).value
             if baseAddr:
                 st_perip.baseAddress = baseAddr
-            offset = ws.cell(row,5).value
+            offset = ws.cell(row, perip_col_dict['addressOffset']).value
             if offset:
                 st_perip.addressOffset = offset
-            processor = ws.cell(row, 6).value
-            if processor:
-                st_perip.processor = processor
-            mod_inst_name = ws.cell(row, 8).value
+            # processor = ws.cell(row, 6).value
+            # if processor:
+            #     st_perip.processor = processor
+            memRemap = ws.cell(row,perip_col_dict['memoryRemap']).value
+            if memRemap:
+                st_perip.memoryRemap = memRemap
+
+            mod_inst_name = ws.cell(row, perip_col_dict['moduleName']).value
             if index == 0 and mod_inst_name:
                 mod_name = mod_inst_name
             if mod_inst_name and mod_inst_name != mod_name:
                 print(f'moduleName must be same at row: {row}')
-                markCell_InvalidFunc2(ws, row, 8)
+                markCell_InvalidFunc2(ws, row, perip_col_dict['moduleName'])
                 bMod_CheckErr = True
             if mod_inst_name:
                 st_perip.moduleName = mod_name
-            inst_Name = ws.cell(row, 9).value
+            inst_Name = ws.cell(row, perip_col_dict['instanceName']).value
             if inst_Name:
                 st_perip.instanceName = inst_Name
-            busInf = ws.cell(row,10).value
+            busInf = ws.cell(row,perip_col_dict['busInterface']).value
             if busInf:
                 st_perip.busInterface = busInf
+            
 
-            mod_inst_structName = ws.cell(row, 11).value
+            mod_inst_structName = ws.cell(row, perip_col_dict['headerStructName']).value
             if index == 0 and mod_inst_structName:
                 struct_name = mod_inst_structName
             if mod_inst_structName and mod_inst_structName != struct_name:
                 print(f'headerStructName must be same at row: {row}')
-                markCell_InvalidFunc2(ws, row, 8)
+                markCell_InvalidFunc2(ws, row, perip_col_dict['headerStructName'])
                 bMod_CheckErr = True
             if mod_inst_structName:
                 st_perip.headerStructName = struct_name
 
-            mod_inst_prefix = ws.cell(row, 12).value
+            mod_inst_prefix = ws.cell(row, perip_col_dict['prefixToName']).value
             if index == 0 and mod_inst_prefix:
                 prefix_str = mod_inst_prefix
             if mod_inst_prefix and mod_inst_prefix != prefix_str:
                 print(f'prefixToName must be same at row: {row}')
-                markCell_InvalidFunc2(ws, row, 12)
+                markCell_InvalidFunc2(ws, row, perip_col_dict['prefixToName'])
                 bMod_CheckErr = True
             if prefix_str:
                 st_perip.prefixToName = prefix_str
 
-            mod_inst_suffix = ws.cell(row, 13).value
+            mod_inst_suffix = ws.cell(row, perip_col_dict['suffixToName']).value
             if index == 0 and mod_inst_suffix:
                 suffix_str = mod_inst_suffix
             if mod_inst_suffix and mod_inst_suffix != suffix_str:
                 print(f'suffixToName must be same at row: {row}')
-                markCell_InvalidFunc2(ws, row, 13)
+                markCell_InvalidFunc2(ws, row, perip_col_dict['suffixToName'])
                 bMod_CheckErr = True
             if suffix_str:
                 st_perip.suffixToName = suffix_str
-            desc = ws.cell(row, 16).value
+            desc = ws.cell(row, perip_col_dict['description']).value
             if desc:
                 st_perip.description = desc
-            addri = ws.cell(row, 14).value
+            addri = ws.cell(row, perip_col_dict['addressBlocks']).value
             if addri:
                 bIn = False
                 if isinstance(addri, str) and addri.startswith('A'):
@@ -746,10 +762,10 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
                 if not bIn:
                     print(
                         f'addressBlocks must be the cell of addressBlocks at row: {row}')
-                    markCell_InvalidFunc2(ws, row, 14)
+                    markCell_InvalidFunc2(ws, row, perip_col_dict['addressBlocks'])
                     bMod_CheckErr = True
 
-            interi = ws.cell(row, 15).value
+            interi = ws.cell(row, perip_col_dict['interrupts']).value
             if interi:
                 bIn = False
                 if isinstance(interi, str) and interi.startswith('A'):
@@ -761,7 +777,7 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
                 if not bIn:
                     print(
                         f'interrupts must be the cell of interrupts at row: {row}')
-                    markCell_InvalidFunc2(ws, row, 15)
+                    markCell_InvalidFunc2(ws, row, perip_col_dict['interrupts'])
                     bMod_CheckErr = True
             perip_list.append(st_perip)
         row += 1
@@ -839,68 +855,70 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
                 if p.interuptsRowindex in interu_dict:
                     p.interrupts = interu_dict[p.interuptsRowindex]
                 # print(p.get_inst_str())
-
-    cluster_lst = flag_dict['cluster:']
-    end_cluster_lst = flag_dict['end cluster']
     st_clu_reg_list = []
-    # parent_clu_reg_list = None
-    # parent_clu_ = None
-    if isinstance(end_cluster_lst, list) and len(cluster_lst) != len(end_cluster_lst):
-        bMod_CheckErr = True
-        print("Error:  cluster not all have end cluster")
-    else:
-        cluster_len = len(cluster_lst)
-        # 将cluseter和endcluster按行号循序重新排列
-        clu_item_lst = []
-        for c in cluster_lst:
-            clu_ = St_clusterFlag_info()
-            clu_.row = c
-            clu_item_lst.append(clu_)
-        for e in end_cluster_lst:
-            clu_ = St_clusterFlag_info()
-            clu_.row = e
-            clu_.bEnd = True
-            bInsert = False
-            for index in range(len(clu_item_lst)):
-                if clu_item_lst[index].row > e:
-                    clu_item_lst.insert(index, clu_)
-                    bInsert = True
-                    break
-            if not bInsert:
+    clu_range_list = []
+
+    if 'cluster:' in flag_dict  and 'end cluster' in flag_dict:
+        cluster_lst = flag_dict['cluster:']
+        end_cluster_lst = flag_dict['end cluster']
+        
+        # parent_clu_reg_list = None
+        # parent_clu_ = None
+        if isinstance(end_cluster_lst, list) and len(cluster_lst) != len(end_cluster_lst):
+            bMod_CheckErr = True
+            print("Error:  cluster not all have end cluster")
+        else:
+            cluster_len = len(cluster_lst)
+            # 将cluseter和endcluster按行号循序重新排列
+            clu_item_lst = []
+            for c in cluster_lst:
+                clu_ = St_clusterFlag_info()
+                clu_.row = c
                 clu_item_lst.append(clu_)
-        # 现在得到了顺序排列
-        clu_range_list = []
-        clu_item_len = len(clu_item_lst)
-        cur_clu_range = None
-        parent_clu_range_lst = []
-        for index in range(clu_item_len):
-            clu_item = clu_item_lst[index]
-            if cur_clu_range:
-                if clu_item.bEnd:
-                    if cur_clu_range:
-                        cur_clu_range.rowEnd = clu_item.row
-                        if parent_clu_range_lst:
-                            cur_clu_range = parent_clu_range_lst.pop()
-                        else:
-                            cur_clu_range = None
+            for e in end_cluster_lst:
+                clu_ = St_clusterFlag_info()
+                clu_.row = e
+                clu_.bEnd = True
+                bInsert = False
+                for index in range(len(clu_item_lst)):
+                    if clu_item_lst[index].row > e:
+                        clu_item_lst.insert(index, clu_)
+                        bInsert = True
+                        break
+                if not bInsert:
+                    clu_item_lst.append(clu_)
+            # 现在得到了顺序排列
+
+            clu_item_len = len(clu_item_lst)
+            cur_clu_range = None
+            parent_clu_range_lst = []
+            for index in range(clu_item_len):
+                clu_item = clu_item_lst[index]
+                if cur_clu_range:
+                    if clu_item.bEnd:
+                        if cur_clu_range:
+                            cur_clu_range.rowEnd = clu_item.row
+                            if parent_clu_range_lst:
+                                cur_clu_range = parent_clu_range_lst.pop()
+                            else:
+                                cur_clu_range = None
+                    else:
+                        if cur_clu_range.rowEnd == 0:
+                            clu_range = St_ClusterInnerRange(clu_item.row)
+                            clu_range.parentClustRow = cur_clu_range.rowStart
+                            parent_clu_range_lst.append(cur_clu_range)
+                            cur_clu_range = clu_range
+                            clu_range_list.append(clu_range)
                 else:
-                    if cur_clu_range.rowEnd == 0:
-                        clu_range = St_ClusterInnerRange(clu_item.row)
-                        clu_range.parentClustRow = cur_clu_range.rowStart
-                        parent_clu_range_lst.append(cur_clu_range)
-                        cur_clu_range = clu_range
-                        clu_range_list.append(clu_range)
-            else:
-                cur_clu_range = clu_range = St_ClusterInnerRange(clu_item.row)
-                clu_range_list.append(clu_range)
+                    cur_clu_range = clu_range = St_ClusterInnerRange(clu_item.row)
+                    clu_range_list.append(clu_range)
 
-        for clu_range in clu_range_list:
-            print(clu_range.get_inst_str())
-            if clu_range.parentClustRow == 0:
-                st_clu_reg_list, row, bError = readCluster(ws, st_clu_reg_list, clu_range, clu_range_list)
-                if bError:
-                    bMod_CheckErr = True
-
+            for clu_range in clu_range_list:
+                print(clu_range.get_inst_str())
+                if clu_range.parentClustRow == 0:
+                    st_clu_reg_list, row, bError = readCluster(ws, st_clu_reg_list, clu_range, clu_range_list)
+                    if bError:
+                        bMod_CheckErr = True
     reg_row_lst = flag_dict['register:']
     if reg_row_lst:
         for a_i in reg_row_lst:
@@ -991,7 +1009,7 @@ def readRegister(ws:worksheet, row_end:int, row_start:int, parent_clu_reg_list:l
                     alternateRegister = ws.cell(row, reg_col_dict['alternateRegister']).value
                     if alternateRegister:
                         cur_st_reg.alternateRegister = alternateRegister
-                    alternateGroupName = ws.cell(row, reg_col_dict['alternateGroupName']).value
+                    alternateGroupName = ws.cell(row, reg_col_dict['alternateGroup']).value
                     if alternateGroupName:
                         cur_st_reg.alternateGroupName = alternateGroupName
                     dim = ws.cell(row, reg_col_dict['dim']).value
@@ -1032,7 +1050,7 @@ def readRegister(ws:worksheet, row_end:int, row_start:int, parent_clu_reg_list:l
                 if name and name.upper() != 'RESERVED':
                     for f in cur_st_reg.fields:
                         if f.name == name:
-                            if f == cur_reg_fd:
+                            if f.name == cur_reg_fd.name:
                                 bSameFieldAsPrev = True
                             else:
                                 print(f'In Register Field Name not allow repeat at Row {row}')
@@ -1168,7 +1186,7 @@ def readCluster(ws: worksheet, parent_clu_reg_list:list, clu_range: St_ClusterIn
                 alternateCluster = ws.cell(row, cluster_col_dict['alternateCluster']).value
                 if alternateCluster:
                     st_clu.alternateCluster = alternateCluster
-                alternateGroupName = ws.cell(row, cluster_col_dict['alternateGroupName']).value
+                alternateGroupName = ws.cell(row, cluster_col_dict['alternateGroup']).value
                 if alternateGroupName:
                     st_clu.alternateGroupName = alternateGroupName
                 headerStructName = ws.cell(row, cluster_col_dict['headerStructName']).value
@@ -3543,7 +3561,7 @@ def checkDeviceSheet(ws:worksheet):
     row = 9
     mem_row_pos = cpu_row_pos = 0
     nRows = ws.max_row
-    maxCols = ws.max_column
+    maxCols = ws.max_column+1
     while row <= nRows:
         val = ws.cell(row, 1).value
         if val == 'cpus:':
@@ -3564,6 +3582,7 @@ def checkDeviceSheet(ws:worksheet):
                 val = ws.cell(row_cpu_header,col_i).value
                 if val:
                     cpu_col_dict[val] = col_i
+            print(cpu_col_dict)
             # print(cpu_col_dict)
             for row_i in range(cpu_row_pos+2, end_row_pos):
                 cpu_name = ws.cell(row_i, cpu_col_dict['name']).value
@@ -3579,6 +3598,7 @@ def checkDeviceSheet(ws:worksheet):
                 itcm = ws.cell(row_i,cpu_col_dict['itcmPresent']).value
                 ditcm = ws.cell(row_i,cpu_col_dict['dtcmPresent']).value
                 l2cache = ws.cell(row_i,cpu_col_dict['l2cachePresent']).value
+                powerDomain= ws.cell(row_i,cpu_col_dict['powerDomain']).value
                 if cpu_name and revision and endian:
                     st_cpu = St_CPU(cpu_name)
                     derivedFrom = ws.cell(row_i, cpu_col_dict['derivedFrom']).value
@@ -3642,6 +3662,9 @@ def checkDeviceSheet(ws:worksheet):
                             st_cpu.l2cachePresent = True
                     elif isinstance(l2cache,bool):
                         st_cpu.l2cachePresent = l2cache
+                    
+                    if isinstance(powerDomain,str):
+                        st_cpu.powerDomain=powerDomain
 
                     st_dev.cpus.append(st_cpu)
 
@@ -3662,6 +3685,8 @@ def checkDeviceSheet(ws:worksheet):
                 size = ws.cell(row_i, mem_col_dict['size']).value
                 access = ws.cell(row_i, mem_col_dict['access']).value
                 usage = ws.cell(row_i, mem_col_dict['usage']).value
+                remap = ws.cell(row_i,mem_col_dict['remap']).value
+                powerDomain= ws.cell(row_i,mem_col_dict['powerDomain']).value
                 if mem_name and addrbase and addrOffset and addrOffset and size and access and usage:
                     st_mem = St_Memory(mem_name)
                     derivedFrom = ws.cell(row_i, mem_col_dict['derivedFrom']).value
@@ -3672,9 +3697,11 @@ def checkDeviceSheet(ws:worksheet):
                     st_mem.size = size
                     st_mem.access = access
                     st_mem.usage = usage
-                    processor = ws.cell(row_i, mem_col_dict['processor']).value
-                    if processor:
-                        st_mem.processor = processor
+                    st_mem.remap = remap
+                    st_mem.powerDomain = powerDomain
+                    # processor = ws.cell(row_i, mem_col_dict['processor']).value
+                    # if processor:
+                    #     st_mem.processor = processor
                     desc = ws.cell(row_i, mem_col_dict['description']).value
                     if desc:
                         st_mem.description = desc
@@ -3740,5 +3767,5 @@ def dealwith_excel(xls_file:str, outFlag:int = 1):
 if __name__ == '__main__':
     # 全路径是为方便在vscode中进行调试
     # file_name = 'D:/workspace/demopy/excel_flow/excel/ahb_cfg_20230925.xlsx'
-    file_name = './xy2_mp32daptyxx_DDF 231208.xlsx'
+    file_name = './xy2_mp32daptyxx_DDF 240108.xlsx'
     dealwith_excel(file_name)
