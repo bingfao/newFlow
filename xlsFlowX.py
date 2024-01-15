@@ -368,10 +368,11 @@ class St_Peripheral:
         self.interrupts = []
         self.clust_reg_lst = []  # cluster or register
         self.memoryRemap = False
+        self.powerDomain = ''
 
     def get_inst_str(self):
         inst_str = 'Peripheral: \n'
-        inst_str += f'name:{self.name}, derivedFrom:{self.derivedFrom},proc:{self.processor},alias:{self.alternatePeripheral},moduleName:{self.moduleName},instName:{self.instanceName},hStructName:{
+        inst_str += f'name:{self.name}, derivedFrom:{self.derivedFrom},alternatePeripheral:{self.alternatePeripheral},moduleName:{self.moduleName},instName:{self.instanceName},hStructName:{
             self.headerStructName},prefix:{self.prefixToName},suffix:{self.suffixToName},addrBlocks:{self.addrBlocksRowindex},interupt:{self.interuptsRowindex},desc:{self.description}\n'
         for adb in self.addressBlocks:
             inst_str += '\t'+adb.get_inst_str()+'\n'
@@ -394,7 +395,7 @@ class St_Peripheral:
 
     
     def toJson(self):
-        json_str = '{\n' f'"name": "{self.name}","derivedFrom": "{self.derivedFrom}","processor": "{self.processor}", "aliasPeripheral": "{self.alternatePeripheral}","prefixToName": "{self.prefixToName}","suffixToName": "{self.suffixToName}"'
+        json_str = '{\n' f'"name": "{self.name}","derivedFrom": "{self.derivedFrom}","alternatePeripheral": "{self.alternatePeripheral}","prefixToName": "{self.prefixToName}","suffixToName": "{self.suffixToName}"'
         json_str += f',"moduleName": "{self.moduleName}","instanceName": "{self.instanceName}","description": "{self.description}","busInterface": "{self.busInterface}","headerStructName": "{self.headerStructName}"'
         json_str += f',"baseAddress": "{self.baseAddress}","addrDerivedFrom": "{self.memoryMap}","addressOffset": "{self.addressOffset}"'
         if self.addressBlocks:
@@ -700,6 +701,9 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
             memRemap = ws.cell(row,perip_col_dict['memoryRemap']).value
             if memRemap:
                 st_perip.memoryRemap = memRemap
+            powerDomain = ws.cell(row,perip_col_dict['powerDomain']).value
+            if powerDomain:
+                st_perip.powerDomain = powerDomain
 
             mod_inst_name = ws.cell(row, perip_col_dict['moduleName']).value
             if index == 0 and mod_inst_name:
@@ -1418,7 +1422,7 @@ extern "C"
         irCount = len(dev.interrupts) 
         for ir in dev.interrupts:
             index += 1
-            if isinstance(ir,St_Interrupt):
+            if isinstance(ir,St_Interrupt) and ir.value:
                 emIr= cst_tab_str+f'{ir.name}'
                 emIr = emIr.ljust(cst_emIRQ_SpaceSize)
                 emIr += '= '+ str(ir.value)
@@ -1635,27 +1639,47 @@ typedef void (*irqFnHandler)(void *);
  * -- Special function register map
  * ------------------------------------------------------------------------- */
 """
+        ### 这里待修改，采用powerDomain来区分？
+        powerDomain_lst = []
         perip_proc_dict = {}
         for p_name in dev.peripherals:
             perip_lst=dev.peripherals[p_name]
             for perip in perip_lst:
+                perip_str = f'#define {perip.name}_BASE'.ljust(cst_Perip_SpaceSize)+f'({perip.getAddrStr()})\n'
                 bInProcLst = False
-                if perip.processor:
-                    perip_str = f'#define {perip.name}_BASE'.ljust(cst_Perip_SpaceSize)+f'({perip.getAddrStr()})\n'
-                    for p in procName_lst:
-                        if perip.processor == p:
+                if perip.memoryRemap:
+                    pass
+                if perip.powerDomain:
+                    for p in powerDomain_lst:
+                        if perip.powerDomain == p:
                             bInProcLst = True
                             if p in perip_proc_dict:
                                 proc_perip_str = perip_proc_dict[p]
                                 proc_perip_str += perip_str
                                 perip_proc_dict[p] = proc_perip_str
+                                pass
                             else:
                                 perip_proc_dict[p] = perip_str
+                                pass
                             break
                         pass
                     pass
+                # if perip.processor:
+                #     perip_str = f'#define {perip.name}_BASE'.ljust(cst_Perip_SpaceSize)+f'({perip.getAddrStr()})\n'
+                #     for p in procName_lst:
+                #         if perip.processor == p:
+                #             bInProcLst = True
+                #             if p in perip_proc_dict:
+                #                 proc_perip_str = perip_proc_dict[p]
+                #                 proc_perip_str += perip_str
+                #                 perip_proc_dict[p] = proc_perip_str
+                #             else:
+                #                 perip_proc_dict[p] = perip_str
+                #             break
+                #         pass
+                #     pass
                 if not bInProcLst:
-                    print(f'Error:  perip {perip.name} processor {perip.processor} not in CPUS. ')
+                    print(f'Error:  perip {perip.name} powerDomain {perip.powerDomain} not in powerDomains. ')
                 pass
             pass
 
@@ -2159,7 +2183,7 @@ def output_C_moduleFile(preip_lst:list, preip_name:str, version:str):
             
                 perip_inst_lst=[]
                 for p in  preip_lst:
-                    if not p.aliasPeripheral:
+                    if not p.alternatePeripheral:
                         perip_inst_lst.append(p)
                 
                 for p in perip_inst_lst:
@@ -3054,30 +3078,30 @@ def getRegFieldInfo_C(tab_str:str, clu_reg: St_Register ,moduleName:str,nRegRese
             if clu_reg.fields:
                 regFdStr = 'struct {\n'
                 curBitPos=0
-                reservedindex =0
+                reservedindex = 0
+                nValidFd_index = 0
                 for fd in clu_reg.fields:
                     if isinstance(fd,St_Field):
+                        tmp_row_str = ''
                         row_str=''
                         fd_Op_str = ''
                         fd_head_str = fd_body_str = ''
-
                         if fd.bitOffset > curBitPos:
                             #添加reserved
-                            row_str+=f'{row_fd_tab_str}{uint_str} reserved{reservedindex}: {curBitPos - fd.bitOffset};'
+                            tmp_row_str = f'{row_fd_tab_str}{uint_str} reserved{reservedindex}: {fd.bitOffset - curBitPos};\n'
                             reservedindex += 1
-                            nValidFdCount += 1
 
                         curBitPos = fd.bitOffset + fd.bitWidth
                         
                         if fd.name == 'RESERVED':
                             if curBitPos != clu_reg.size:
                                 #最上面的保留字段，不生成
-                                row_str+=f'{row_fd_tab_str}{uint_str} reserved{reservedindex}: {fd.bitWidth};'
-                                reservedindex+=1
+                                row_str += f'{row_fd_tab_str}{uint_str} reserved{reservedindex}: {fd.bitWidth};'
+                                reservedindex += 1
                             else:
                                 continue
                         else:
-                            nValidFdCount += 1
+                            nValidFd_index += 1
                             row_str+=f'{row_fd_tab_str}{uint_str} {fd.name}: {fd.bitWidth};'
 
                             endBit = fd.bitWidth + fd.bitOffset - 1
@@ -3120,12 +3144,15 @@ def getRegFieldInfo_C(tab_str:str, clu_reg: St_Register ,moduleName:str,nRegRese
                                     regFdOpStr += f'(({uint_str}) ((val) & {markVal}) << {regFdPos})\n'
                                     fd_body_str += regFdOpStr
                             fd_head_str += ' */\n'
-
-                        fd_Op_str = fd_head_str + fd_body_str +'\n'
-                        retOpstr += fd_Op_str
-                        row_str = row_str.ljust(cst_RegField_SpaceSize)
-                        row_str += f'/*!< bitOffset: {fd.bitOffset} ({fd.access}), {fd.description} */\n'
-                        regFdStr += row_str
+                        if nValidFd_index <= nValidFdCount :
+                            if tmp_row_str:
+                                regFdStr += tmp_row_str
+                                pass
+                            fd_Op_str = fd_head_str + fd_body_str +'\n'
+                            retOpstr += fd_Op_str
+                            row_str = row_str.ljust(cst_RegField_SpaceSize)
+                            row_str += f'/*!< bitOffset: {fd.bitOffset} ({fd.access}), {fd.description} */\n'
+                            regFdStr += row_str
                         pass
                     pass
                 pass
