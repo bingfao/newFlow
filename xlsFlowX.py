@@ -48,13 +48,13 @@ ubitSize_bytes_dict = {8: '1', 16: '2',
 
 
 cst_HEXValue_StringSize = 10
-cst_emIRQ_SpaceSize = 20
-cst_IRQ_SpaceSize = 40
-cst_CORE_SpaceSize = 40
-cst_Perip_SpaceSize = 40
-cst_Mem_SpaceSize = 40
-cst_Reg_SpaceSize = 40
-cst_RegField_SpaceSize = 48
+cst_emIRQ_SpaceSize = 30
+cst_IRQ_SpaceSize = 50
+cst_CORE_SpaceSize = 50
+cst_Perip_SpaceSize = 50
+cst_Mem_SpaceSize = 50
+cst_Reg_SpaceSize = 50
+cst_RegField_SpaceSize = 60
 
 # RW, RO, WO, W1, W1C, RC, RS, WRC, WRS, WC, WS, WSRC, WCRS, W1S, W1T, W0C,
 #                  W0S, W0T, W1SRC, W1CRS, W0SRC, W0CRS, W0C, W0S, WO1
@@ -3020,9 +3020,9 @@ def getRegFieldInfo_C(tab_str:str, clu_reg: St_Register ,moduleName:str,nRegRese
     if reg_offset > nLastOffset:
         nNeedReserved =reg_offset - nLastOffset
         if nNeedReserved >1:
-            offsetfileHeader = cst_tab_str +  f'uint8_t nReg_Reserved{nRegReservedIndex}[{nNeedReserved}];'
+            offsetfileHeader = row_tab_str +  f'uint8_t nReg_Reserved{nRegReservedIndex}[{nNeedReserved}];'
         else:
-            offsetfileHeader = cst_tab_str +  f'uint8_t nReg_Reserved{nRegReservedIndex};'
+            offsetfileHeader = row_tab_str +  f'uint8_t nReg_Reserved{nRegReservedIndex};'
         offsetfileHeader = offsetfileHeader.ljust(cst_Reg_SpaceSize) + '//Add Reserved for offset  \n'
         nRegReservedIndex += 1
         pass
