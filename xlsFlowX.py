@@ -103,6 +103,7 @@ class St_CPU:
         self.dtcmPresent = False
         self.l2cachePresent = False
         self.powerDomain = ''
+        self.systemDomain = ''
 
     def get_inst_str(self):
         return f'name:{self.name},derivedFrom:{self.derivedFrom},revision:{self.revision},endian:{self.endian},srs:{self.srsPresent},mpu:{self.mpuPresent},fpu:{self.fpuPresent},dsp:{self.dspPresent},icache:{self.icachePresent},dcache:{self.dcachePresent},itcm:{self.itcmPresent},dtcm:{self.dtcmPresent},l2cache:{self.l2cachePresent}'
@@ -149,7 +150,7 @@ class St_Memory:
         self.usage = ''
         self.processor = ''
         self.description = ''
-        self.remap = False
+        self.systemDomain = ''
         self.powerDomain = ''
 
     def get_inst_str(self):
@@ -369,6 +370,7 @@ class St_Peripheral:
         self.clust_reg_lst = []  # cluster or register
         self.memoryRemap = False
         self.powerDomain = ''
+        self.systemDomain = ''
 
     def get_inst_str(self):
         inst_str = 'Peripheral: \n'
@@ -392,7 +394,12 @@ class St_Peripheral:
         addr_str += ' + '+ self.addressOffset
         return addr_str
 
-
+    def getheaderStructName(self):
+        structName = self.headerStructName
+        if not structName:
+            structName = self.name
+            pass
+        return structName.upper()
     
     def toJson(self):
         json_str = '{\n' f'"name": "{self.name}","derivedFrom": "{self.derivedFrom}","alternatePeripheral": "{self.alternatePeripheral}","prefixToName": "{self.prefixToName}","suffixToName": "{self.suffixToName}"'
@@ -585,8 +592,10 @@ def isHexString(strVal:str, b0xStart:bool = True):
                 break
     return brt
 
-def getIntValFromHexString(strVal:str,b0xStart:bool = True):
+def getIntValFromHexString(strVal:str):
+    strVal = strVal.upper()
     nPos = 0
+    b0xStart = strVal.startswith('0X')
     if b0xStart:
         nPos =2
     nVal = int(strVal[nPos:],16)
@@ -695,12 +704,17 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
             offset = ws.cell(row, perip_col_dict['addressOffset']).value
             if offset:
                 st_perip.addressOffset = offset
+            else:
+                st_perip.addressOffset = '0'
             # processor = ws.cell(row, 6).value
             # if processor:
             #     st_perip.processor = processor
             memRemap = ws.cell(row,perip_col_dict['memoryRemap']).value
             if memRemap:
                 st_perip.memoryRemap = memRemap
+            systemDomain = ws.cell(row,perip_col_dict['systemDomain']).value
+            if systemDomain:
+                st_perip.systemDomain = systemDomain
             powerDomain = ws.cell(row,perip_col_dict['powerDomain']).value
             if powerDomain:
                 st_perip.powerDomain = powerDomain
@@ -717,9 +731,10 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
             inst_Name = ws.cell(row, perip_col_dict['instanceName']).value
             if inst_Name:
                 st_perip.instanceName = inst_Name
-            busInf = ws.cell(row,perip_col_dict['busInterface']).value
-            if busInf:
-                st_perip.busInterface = busInf
+            if 'busInterface' in perip_col_dict:
+                busInf = ws.cell(row,perip_col_dict['busInterface']).value
+                if busInf:
+                    st_perip.busInterface = busInf
             
 
             mod_inst_structName = ws.cell(row, perip_col_dict['headerStructName']).value
@@ -920,7 +935,7 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
             for clu_range in clu_range_list:
                 print(clu_range.get_inst_str())
                 if clu_range.parentClustRow == 0:
-                    st_clu_reg_list, row, bError = readCluster(ws, st_clu_reg_list, clu_range, clu_range_list)
+                    st_clu_reg_list, row, bError = readCluster(ws,sheetName, st_clu_reg_list, clu_range, clu_range_list)
                     if bError:
                         bMod_CheckErr = True
     reg_row_lst = flag_dict['register:']
@@ -938,7 +953,7 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
             f_i = flag_rows.index(a_i)
             if f_i < flags_count-1:
                 row_end = flag_rows[f_i+1] - 1
-            st_clu_reg_list, row ,bError = readRegister(ws,  row_end, a_i, st_clu_reg_list)
+            st_clu_reg_list, row ,bError = readRegister(ws,sheetName, row_end, a_i, st_clu_reg_list)
             if bError:
                 bMod_CheckErr = True
 
@@ -955,9 +970,10 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
     return not bMod_CheckErr, perip_list,interupts_set
 
 
-def readRegister(ws:worksheet, row_end:int, row_start:int, parent_clu_reg_list:list):
+def readRegister(ws:worksheet,sheetName:str, row_end:int, row_start:int, parent_clu_reg_list:list):
     bError = False
     maxCols = ws.max_column
+
     #先读出CPU的各列对应的字段
     row_reg_header = row_start + 1
     reg_col_dict = {}
@@ -988,6 +1004,16 @@ def readRegister(ws:worksheet, row_end:int, row_start:int, parent_clu_reg_list:l
                             regFd_col_dict[val] = col_i
                     # print(regFd_col_dict)
                 else:
+                    # 需要增加判断，reg_Name不能重复
+                    if name.upper() != 'RESERVED':
+                        if parent_clu_reg_list:
+                            for clu_reg in parent_clu_reg_list:
+                                if clu_reg.name  == name:
+                                    print(f'Error In excel_file Sheet:{sheetName} row: {row} regsiter name must not be repeat.')
+                                    bError = True
+                                    break
+                                pass
+                            pass
                     offset = ws.cell(row, reg_col_dict['addressOffset']).value
                     r_size = ws.cell(row, reg_col_dict['size']).value
                     if r_size:
@@ -1000,7 +1026,14 @@ def readRegister(ws:worksheet, row_end:int, row_start:int, parent_clu_reg_list:l
                     cur_st_reg = St_Register(name, access, size)
                     cur_st_reg.addressOffset = offset
                     #addrOffset = int(offset[2:], 16)
-                    addrOffset = int(offset, 16)
+                    addrOffset = 0
+                    if isinstance(offset,str):
+                        addrOffset = getIntValFromHexString(offset)
+                        pass
+                    else:
+                        print(f'Error In excel_file Sheet:{sheetName} row: {row} addressOffset must be hex string.')
+                        bError = True
+                        pass
                     resetValue = ws.cell(row, reg_col_dict['resetValue']).value
                     if resetValue:
                         cur_st_reg.resetValue = resetValue
@@ -1036,10 +1069,15 @@ def readRegister(ws:worksheet, row_end:int, row_start:int, parent_clu_reg_list:l
                     if parent_clu_reg_list:
                         i = 0
                         for clu_reg in parent_clu_reg_list:
-                            offset = int(clu_reg.addressOffset[2:], 16)
+                            offset = getIntValFromHexString(clu_reg.addressOffset)
                             if offset > addrOffset:
                                 parent_clu_reg_list.insert(i, cur_st_reg)
                                 break
+                            elif offset == addrOffset:
+                                if clu_reg.dim != cur_st_reg.dim:
+                                    print(f'Error In excel_file Sheet:{sheetName} row: {row} dim not equal the same addr reg: {clu_reg.name}')
+                                    bError = True
+                                pass
                             i += 1
                         if i == len(parent_clu_reg_list):
                             parent_clu_reg_list.append(cur_st_reg)
@@ -1138,7 +1176,7 @@ def readRegister(ws:worksheet, row_end:int, row_start:int, parent_clu_reg_list:l
     return parent_clu_reg_list, row, bError
 
 
-def readCluster(ws: worksheet, parent_clu_reg_list:list, clu_range: St_ClusterInnerRange, clu_range_list:list):
+def readCluster(ws: worksheet,sheetName:str, parent_clu_reg_list:list, clu_range: St_ClusterInnerRange, clu_range_list:list):
     bError = False
     clu_start = clu_range.rowStart
     clu_end = clu_range.rowEnd
@@ -1163,7 +1201,7 @@ def readCluster(ws: worksheet, parent_clu_reg_list:list, clu_range: St_ClusterIn
                 for c_r in clu_range_list:
                     if c_r.rowStart == row:
                         st_clu.clusters, row, bError = readCluster(
-                            ws, st_clu.clusters, c_r, clu_range_list)
+                            ws,sheetName, st_clu.clusters, c_r, clu_range_list)
                         break
             else:
                 row += 2
@@ -1171,7 +1209,7 @@ def readCluster(ws: worksheet, parent_clu_reg_list:list, clu_range: St_ClusterIn
         elif name == 'register:':
             if st_clu:
                 st_clu.clusters, row ,bError= readRegister(
-                    ws, clu_end, row, st_clu.clusters)
+                    ws,sheetName, clu_end, row, st_clu.clusters)
             else:
                 row += 2
             continue
@@ -1209,7 +1247,7 @@ def readCluster(ws: worksheet, parent_clu_reg_list:list, clu_range: St_ClusterIn
                     i = 0
                     for clu_reg in parent_clu_reg_list:
                         #offset = int(clu_reg.addressOffset[2:], 16)
-                        offset = int(clu_reg.addressOffset, 16)
+                        offset = getIntValFromHexString(st_clu.addressOffset)
                         if offset > addrOffset:
                             parent_clu_reg_list.insert(i, st_clu)
                             break
@@ -1593,10 +1631,10 @@ typedef void (*irqFnHandler)(void *);
                     mem_str += f'/*!< Base address of :{mem.description} - {mem.access} */\n'
                 else:
                     mem_str += '\n'
-                bInProcLst = False
+                bInSysDomainLst = False
                 for p in procName_lst:
                     if mem.processor == p:
-                        bInProcLst = True
+                        bInSysDomainLst = True
                         if p in mem_proc_dict:
                             proc_mem_str = mem_proc_dict[p]
                             proc_mem_str += mem_str
@@ -1604,7 +1642,7 @@ typedef void (*irqFnHandler)(void *);
                         else:
                             mem_proc_dict[p] = mem_str
                         break
-                if not bInProcLst:
+                if not bInSysDomainLst:
                     print(f'Error:  MEM {mem.name} processor {mem.processor} not in CPUS. ')
             else:
                 if mem.derivedFrom:
@@ -1614,7 +1652,7 @@ typedef void (*irqFnHandler)(void *);
                     else:
                         mem_str += '\n'
                 else:
-                    mem_str = f'#define {mem.name}'.ljust(cst_Mem_SpaceSize)+f'({mem.addrBase})'+cst_tab_str
+                    mem_str = f'#define {mem.name}'.ljust(cst_Mem_SpaceSize)+f'({mem.baseAddress})'+cst_tab_str
                     if mem.description:
                         mem_str += f'/*!< Base address of :{mem.description} - {mem.access} */\n'
                     else:
@@ -1640,46 +1678,40 @@ typedef void (*irqFnHandler)(void *);
  * ------------------------------------------------------------------------- */
 """
         ### 这里待修改，采用powerDomain来区分？
-        powerDomain_lst = []
+        proc_sysDomain_dict = {}
+        for cp in dev.cpus:
+            if cp.systemDomain:
+                if cp.systemDomain not in proc_sysDomain_dict:
+                    proc_sysDomain_dict[cp.systemDomain] = cp.name
+                    pass
+                pass
+            pass
         perip_proc_dict = {}
         for p_name in dev.peripherals:
             perip_lst=dev.peripherals[p_name]
             for perip in perip_lst:
                 perip_str = f'#define {perip.name}_BASE'.ljust(cst_Perip_SpaceSize)+f'({perip.getAddrStr()})\n'
-                bInProcLst = False
-                if perip.memoryRemap:
-                    pass
-                if perip.powerDomain:
-                    for p in powerDomain_lst:
-                        if perip.powerDomain == p:
-                            bInProcLst = True
-                            if p in perip_proc_dict:
-                                proc_perip_str = perip_proc_dict[p]
+                bInSysDomainLst = False
+                # if perip.memoryRemap:
+                #     pass
+                if perip.systemDomain:
+                    for p in proc_sysDomain_dict.keys():
+                        if perip.systemDomain == p:
+                            bInSysDomainLst = True
+                            proc_name = proc_sysDomain_dict[p]
+                            if proc_name in perip_proc_dict:
+                                proc_perip_str = perip_proc_dict[proc_name]
                                 proc_perip_str += perip_str
-                                perip_proc_dict[p] = proc_perip_str
+                                perip_proc_dict[proc_name] = proc_perip_str
                                 pass
                             else:
-                                perip_proc_dict[p] = perip_str
+                                perip_proc_dict[proc_name] = perip_str
                                 pass
                             break
                         pass
                     pass
-                # if perip.processor:
-                #     perip_str = f'#define {perip.name}_BASE'.ljust(cst_Perip_SpaceSize)+f'({perip.getAddrStr()})\n'
-                #     for p in procName_lst:
-                #         if perip.processor == p:
-                #             bInProcLst = True
-                #             if p in perip_proc_dict:
-                #                 proc_perip_str = perip_proc_dict[p]
-                #                 proc_perip_str += perip_str
-                #                 perip_proc_dict[p] = proc_perip_str
-                #             else:
-                #                 perip_proc_dict[p] = perip_str
-                #             break
-                #         pass
-                #     pass
-                if not bInProcLst:
-                    print(f'Error:  perip {perip.name} powerDomain {perip.powerDomain} not in powerDomains. ')
+                if not bInSysDomainLst:
+                    print(f'Error:  perip {perip.name} systemDomain {perip.systemDomain} not in systemDomains. ')
                 pass
             pass
 
@@ -2061,7 +2093,7 @@ def output_C_moduleFile(preip_lst:list, preip_name:str, version:str):
         preip_inst = preip_lst[0]
         if isinstance(preip_inst,St_Peripheral):
             out_C_file_Name = preip_name.lower()+'_regs'
-            module_Name = preip_inst.headerStructName.upper()
+            module_Name = preip_inst.getheaderStructName()
             module_Header= module_Name+'_REGS'
             preip_name = preip_name.upper()
             out_file_name = out_C_file_Name+'.h'
@@ -2251,14 +2283,24 @@ def output_C_moduleFile(preip_lst:list, preip_name:str, version:str):
 
                 return out_file_Pathname
 
-def fieldWriteChk_func(errCount_Write_var:str, str_Tab:str, fd_var:str, module_fd_var:str, strfdMask:str):
+def fieldWriteChk_func(errCount_Write_var:str, str_Tab:str, fd_var:str, module_fd_var:str, strfdMask:str,bRegLoop:bool,bModuleLoop:bool):
     fdWriteCheckstr = ''
     fdWriteCheckstr += f'{str_Tab}{module_fd_var} = {strfdMask};\n'
     fdWriteCheckstr += f'{str_Tab}nRegFdVal = {module_fd_var};\n'
     fdWriteCheckstr += f'{str_Tab}if({module_fd_var} != {strfdMask})\n'
     fdWriteCheckstr += f'{str_Tab}' + '{\n'
     fdWriteCheckstr += f'{str_Tab}{cst_tab_str}Print_time();\n'
-    fdWriteCheckstr += f'{str_Tab}{cst_tab_str}Error("Inst_%u # {fd_var}  [0x%X] NOt same as Write [{strfdMask}]! \\n", mi, nRegFdVal);\n'
+    if bRegLoop:
+        if bModuleLoop:
+            fdWriteCheckstr += f'{str_Tab}{cst_tab_str}Error("Inst_%u # {fd_var}  [0x%X] NOt same as Write [{strfdMask}]! \\n", mi,ri,nRegFdVal);\n'
+        else:
+            fdWriteCheckstr += f'{str_Tab}{cst_tab_str}Error("Inst # {fd_var}  [0x%X] NOt same as Write [{strfdMask}]! \\n", ri,nRegFdVal);\n'
+    else:
+        if bModuleLoop:
+            fdWriteCheckstr += f'{str_Tab}{cst_tab_str}Error("Inst_%u # {fd_var}  [0x%X] NOt same as Write [{strfdMask}]! \\n", mi, nRegFdVal);\n'
+        else:
+            fdWriteCheckstr += f'{str_Tab}{cst_tab_str}Error("Inst # {fd_var}  [0x%X] NOt same as Write [{strfdMask}]! \\n", nRegFdVal);\n'
+        pass
     fdWriteCheckstr += f'{str_Tab}{cst_tab_str}++{errCount_Write_var};\n'
     fdWriteCheckstr += str_Tab + '}\n'
     return fdWriteCheckstr
@@ -2343,20 +2385,43 @@ def getModule_Reg_FdChkStr_impl(reg:St_Register,reg_Name_use:str,str_Tab:str,mod
     filed_resetChk_str = ''
     field_WriteChk_str = ''
     bRegLoop = reg.dim >1
+    regAccess = reg.access.upper()
     for fd in reg.fields:
         fd_name=fd.name.upper()
         if fd_name.startswith('RESERVED'): #reserved
             continue
         if fd.defaultValue == 'X':
             continue
-        if reg.nValidFdCount in (0,1):
+        bOnlyReg = False
+        nValidFdCount = reg.nValidFdCount
+        if nValidFdCount in (0,1) :
+            if nValidFdCount == 1 :
+                for f in reg.fields:
+                    if isinstance(fd,St_Field):
+                        fd_nameU = f.name.upper()
+                        if not fd_nameU.startswith('RESERVED'):
+                            if f.name != reg.name:
+                                bOnlyReg = False
+                                pass
+                            else:
+                                bOnlyReg = True
+                            pass
+                        pass
+                    pass
+                pass
+            else:
+                bOnlyReg = True
+            pass
+        if bOnlyReg:
             reg_fd_var = f'{reg_Name_use}'
             pass
         else:
-            reg_fd_var = f'{reg_Name_use}.{fd.name}'
+            reg_fd_var = f'{reg_Name_use}.{fd_name}'
         fd_var = reg_fd_var
         if bRegLoop :
-            fd_var = reg_fd_var.replace('[ri]','[%u]')
+            fd_var = fd_var.replace('[ri]','[%u]')
+        if fd_var != reg_fd_var:
+            print(f'fd_var:{fd_var},reg_fd_var:{reg_fd_var}')
         module_fd_var = f'{modinst_var}->{reg_fd_var}'
         nBitWid = fd.bitWidth
         fdAccess = fd.access.upper()
@@ -2381,32 +2446,32 @@ def getModule_Reg_FdChkStr_impl(reg:St_Register,reg_Name_use:str,str_Tab:str,mod
             filed_resetChk_str += str_Tab + '}\n'
             if bRegLoop :
                 if bModuleLoop:
-                    filed_resetChk_str += f'{str_Tab}else\n{str_Tab}{cst_tab_str}Info("Inst_%u # {fd_var} Value is OK. \\n", mi);\n'
+                    filed_resetChk_str += f'{str_Tab}else\n{str_Tab}{cst_tab_str}Info("Inst_%u # {fd_var} Value is OK. \\n", mi,ri);\n'
                 else:
-                    filed_resetChk_str += f'{str_Tab}else\n{str_Tab}{cst_tab_str}Info("{fd_var} Value is OK. \\n", mi);\n'
+                    filed_resetChk_str += f'{str_Tab}else\n{str_Tab}{cst_tab_str}Info("{fd_var} Value is OK. \\n", ri);\n'
             else:
                 if bModuleLoop:
-                    filed_resetChk_str += f'{str_Tab}else\n{str_Tab}{cst_tab_str}Info("Inst_%u # {fd_var} Value is OK. \\n");\n'
+                    filed_resetChk_str += f'{str_Tab}else\n{str_Tab}{cst_tab_str}Info("Inst_%u # {fd_var} Value is OK. \\n",mi);\n'
                 else:
                     filed_resetChk_str += f'{str_Tab}else\n{str_Tab}{cst_tab_str}Info("{fd_var} Value is OK. \\n");\n'
+        if regAccess in ('W','RW'):
+            if fdAccess == 'RW':
+                if len(fd.enumValues) > 1:
+                    strfdMask = fd.enumValues[-1].value
+                    field_WriteChk_str += fieldWriteChk_func(
+                        errCount_Write_var,  str_Tab, fd_var, module_fd_var, strfdMask,bRegLoop,bModuleLoop)
 
-        if fdAccess == 'RW':
-            if len(fd.enumValues) > 1:
-                strfdMask = fd.enumValues[-1].value
-                field_WriteChk_str += fieldWriteChk_func(
-                    errCount_Write_var,  str_Tab, fd_var, module_fd_var, strfdMask)
+                    strfdMask = fd.enumValues[0].value
+                    field_WriteChk_str+=fieldWriteChk_func(
+                        errCount_Write_var,  str_Tab, fd_var, module_fd_var, strfdMask,bRegLoop,bModuleLoop)
+                else:
+                    strfdMask = f'{bitWidMask_arr[nBitWid-1]}'
+                    field_WriteChk_str += fieldWriteChk_func(
+                        errCount_Write_var,  str_Tab, fd_var, module_fd_var, strfdMask,bRegLoop,bModuleLoop)
 
-                strfdMask = fd.enumValues[0].value
-                field_WriteChk_str+=fieldWriteChk_func(
-                    errCount_Write_var,  str_Tab, fd_var, module_fd_var, strfdMask)
-            else:
-                strfdMask = f'{bitWidMask_arr[nBitWid-1]}'
-                field_WriteChk_str += fieldWriteChk_func(
-                    errCount_Write_var,  str_Tab, fd_var, module_fd_var, strfdMask)
-
-                strfdMask = 0
-                field_WriteChk_str += fieldWriteChk_func(
-                    errCount_Write_var,  str_Tab, fd_var, module_fd_var, strfdMask)
+                    strfdMask = 0
+                    field_WriteChk_str += fieldWriteChk_func(
+                        errCount_Write_var,  str_Tab, fd_var, module_fd_var, strfdMask,bRegLoop,bModuleLoop)
         pass
     return filed_resetChk_str, field_WriteChk_str
 
@@ -2531,7 +2596,7 @@ int main()
 """
         
         mod_inst = module_inst_list[0]
-        module_Name = mod_inst.headerStructName.upper()
+        module_Name = mod_inst.getheaderStructName()
         module_st_name = f'{module_Name}_t'
         filebodystr += f'{cst_tab_str}printf("After clock switch, Now Check Module: {modName}.\\n");\n'
         filebodystr += f'{cst_tab_str}unsigned int nRegFdVal = 0;\n'
@@ -2587,6 +2652,8 @@ int main()
             filebodystr += f'{cst_tab_str}unsigned int nErrCount_wirte = 0;\n'
             filebodystr += '#endif // CHECK_MOUDLE_FIELD_WRITE_VALUE\n\n'
 
+            filebodystr += '#ifdef CHECK_MODULE_FIELD_DEFAULT_VALUE\n'
+
             modinst_var = 'module_inst'
             errCount_var = 'nErrCount_default'
             errCount_write_var = 'nErrCount_wirte'
@@ -2596,21 +2663,21 @@ int main()
 
             filebodystr += str1
 
-            filebodystr += f'{cst_tab_str}{cst_tab_str}if(nErrCount_default)\n'
-            filebodystr += cst_tab_str+cst_tab_str+'{\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}Error("Inst_%u def-Vals have [%u] fds NOT Same!\\n", mi, nErrCount_default);\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_default;\n'
-            filebodystr += cst_tab_str+cst_tab_str+'}\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}{cst_tab_str}Notice("Inst_%u def-Vals are OK!\\n", mi);\n'
+            filebodystr += f'{cst_tab_str}if(nErrCount_default)\n'
+            filebodystr += cst_tab_str+'{\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}Error("Inst def-Vals have [%u] fds NOT Same!\\n", nErrCount_default);\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_default;\n'
+            filebodystr += cst_tab_str+'}\n'
+            filebodystr += f'{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}Notice("Inst def-Vals are OK!\\n");\n'
             filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
 
             filebodystr += str2
-            filebodystr += f'{cst_tab_str}{cst_tab_str}if(nErrCount_wirte)\n'
-            filebodystr += cst_tab_str+cst_tab_str+'{\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}Error("Inst_%u write-Vals have [%u] fds NOT Same!\\n", mi, nErrCount_wirte);\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_wirte;\n'
-            filebodystr += cst_tab_str+cst_tab_str+'}\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}{cst_tab_str}Notice("Inst_%u write-Vals are OK!\\n", mi);\n'
+            filebodystr += f'{cst_tab_str}if(nErrCount_wirte)\n'
+            filebodystr += cst_tab_str+'{\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}Error("Inst write-Vals have [%u] fds NOT Same!\\n", nErrCount_wirte);\n'
+            filebodystr += f'{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_wirte;\n'
+            filebodystr += cst_tab_str+'}\n'
+            filebodystr += f'{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}Notice("Inst write-Vals are OK!\\n");\n'
             filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
 
        
@@ -3011,25 +3078,24 @@ def getRegFieldInfo_C(tab_str:str, clu_reg: St_Register ,moduleName:str,nRegRese
 
     offsetfileHeader = ''
     reg_offset = clu_reg.addressOffset
-    if isHexString(reg_offset):
-        reg_offset = getIntValFromHexString(reg_offset)
+    reg_offset = getIntValFromHexString(reg_offset)
     sizeinfo = f'size:  {math.floor(clu_reg.size/8)}'
     if clu_reg.dim:
         sizeinfo += f', dim: {clu_reg.dim} * {clu_reg.dimIncrement}'
-    print(f'reg: {clu_reg.name}, reg_offset: {reg_offset}, {sizeinfo} , LastOffset: {nLastOffset}')
+    print(f'reg: {clu_reg.name}, reg_offset: {reg_offset}, {sizeinfo} , LastOffset: {nLastOffset},tab_str:{len(tab_str)}')
     if reg_offset > nLastOffset:
-        nNeedReserved =reg_offset - nLastOffset
+        nNeedReserved = reg_offset - nLastOffset
         if nNeedReserved >1:
-            offsetfileHeader = row_tab_str +  f'uint8_t nReg_Reserved{nRegReservedIndex}[{nNeedReserved}];'
+            offsetfileHeader = cst_tab_str +  f'uint8_t nReg_Reserved{nRegReservedIndex}[{nNeedReserved}];'
         else:
-            offsetfileHeader = row_tab_str +  f'uint8_t nReg_Reserved{nRegReservedIndex};'
+            offsetfileHeader = cst_tab_str +  f'uint8_t nReg_Reserved{nRegReservedIndex};'
         offsetfileHeader = offsetfileHeader.ljust(cst_Reg_SpaceSize) + '//Add Reserved for offset  \n'
         nRegReservedIndex += 1
         pass
 
     if clu_reg.access in accessDict:
         accChar = accessDict[clu_reg.access]
-        fileHeader += tab_str+cst_tab_str+ f'{accChar} '
+        fileHeader += row_tab_str + f'{accChar} '
     nAddReservedRegBytes = 0
     if clu_reg.dim:
         if isinstance(clu_reg.dimIncrement,int):
@@ -3041,7 +3107,7 @@ def getRegFieldInfo_C(tab_str:str, clu_reg: St_Register ,moduleName:str,nRegRese
         nLastOffset = reg_offset + math.floor(clu_reg.size/8)
 
     regName = clu_reg.getRegName().upper()
-    space_str = cst_tab_str.ljust(cst_Reg_SpaceSize)
+    # space_str = cst_tab_str.ljust(cst_Reg_SpaceSize)
     lastRow_str = ''
     if regName == 'RESERVED': #Reserved
         lastRow_str = fileHeader + f'{uint_str} {regName}_{nRegReservedIndex}'
@@ -3070,8 +3136,26 @@ def getRegFieldInfo_C(tab_str:str, clu_reg: St_Register ,moduleName:str,nRegRese
     else:
         regFdStr=''
         nValidFdCount = clu_reg.nValidFdCount
-
+        bOnlyReg = False
         if nValidFdCount in (0,1) :
+            if nValidFdCount == 1 :
+                for fd in clu_reg.fields:
+                    if isinstance(fd,St_Field):
+                        fd_nameU = fd.name.upper()
+                        if not fd_nameU.startswith('RESERVED'):
+                            if fd.name != regName:
+                                bOnlyReg = False
+                                pass
+                            else:
+                                bOnlyReg = True
+                            pass
+                        pass
+                    pass
+                pass
+            else:
+                bOnlyReg = True
+            pass
+        if bOnlyReg:
             lastRow_str = fileHeader + uint_str
             fileHeader = ''
         else:
@@ -3593,7 +3677,7 @@ def checkDeviceSheet(ws:worksheet):
         val = ws.cell(row, 1).value
         if val == 'cpus:':
             cpu_row_pos = row
-        elif val == 'memories:':
+        elif val == 'memoryMaps:':
             mem_row_pos = row
         row += 1
 
@@ -3626,6 +3710,7 @@ def checkDeviceSheet(ws:worksheet):
                 ditcm = ws.cell(row_i,cpu_col_dict['dtcmPresent']).value
                 l2cache = ws.cell(row_i,cpu_col_dict['l2cachePresent']).value
                 powerDomain= ws.cell(row_i,cpu_col_dict['powerDomain']).value
+                systemDomain= ws.cell(row_i,cpu_col_dict['systemDomain']).value
                 if cpu_name and revision and endian:
                     st_cpu = St_CPU(cpu_name)
                     derivedFrom = ws.cell(row_i, cpu_col_dict['derivedFrom']).value
@@ -3693,6 +3778,9 @@ def checkDeviceSheet(ws:worksheet):
                     if isinstance(powerDomain,str):
                         st_cpu.powerDomain=powerDomain
 
+                    if isinstance(systemDomain,str):
+                        st_cpu.systemDomain=systemDomain
+
                     st_dev.cpus.append(st_cpu)
 
     if mem_row_pos > 0:
@@ -3712,7 +3800,7 @@ def checkDeviceSheet(ws:worksheet):
                 size = ws.cell(row_i, mem_col_dict['size']).value
                 access = ws.cell(row_i, mem_col_dict['access']).value
                 usage = ws.cell(row_i, mem_col_dict['usage']).value
-                remap = ws.cell(row_i,mem_col_dict['remap']).value
+                systemDomain = ws.cell(row_i,mem_col_dict['systemDomain']).value
                 powerDomain= ws.cell(row_i,mem_col_dict['powerDomain']).value
                 if mem_name and addrbase and addrOffset and addrOffset and size and access and usage:
                     st_mem = St_Memory(mem_name)
@@ -3724,7 +3812,7 @@ def checkDeviceSheet(ws:worksheet):
                     st_mem.size = size
                     st_mem.access = access
                     st_mem.usage = usage
-                    st_mem.remap = remap
+                    st_mem.systemDomain = systemDomain
                     st_mem.powerDomain = powerDomain
                     # processor = ws.cell(row_i, mem_col_dict['processor']).value
                     # if processor:
@@ -3794,5 +3882,5 @@ def dealwith_excel(xls_file:str, outFlag:int = 1):
 if __name__ == '__main__':
     # 全路径是为方便在vscode中进行调试
     # file_name = 'D:/workspace/demopy/excel_flow/excel/ahb_cfg_20230925.xlsx'
-    file_name = './xy2_mp32daptyxx_DDF 240108.xlsx'
+    file_name = './xy2_mp32daptyxx_DDF 240117.xlsx'
     dealwith_excel(file_name)
