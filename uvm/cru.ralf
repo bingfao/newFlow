@@ -1,0 +1,1363 @@
+ # @file    cru.ralf
+ # @author  CIP Application Team
+ # @brief   CRU Register struct Header File.
+ #          This file contains:
+ #           - Data structures and the address mapping for
+ #             CRU peripherals
+ #           - Including peripheral's registers declarations and bits
+ #             definition
+ # @version 0.1 
+ # @date    24-01-19
+ # <h2><center>&copy; Copyright (c)2024 CIP United Co.
+
+ # All rights reserved.</center></h2>
+ #
+
+block CRU {
+    bytes 4;
+    register CCR @0 {
+        bytes  4;
+        field XTALON  @16 {
+            bits 1;
+            reset 0x1;
+            access ro;
+            constraint c_st_CCR_XTALON {
+            };
+        };  #Crystal oscillator ON/OFF, default ON, softwate can't turn it off. When CSWS=0/7, it can't be off
+        field XTALRDY  @17 {
+            bits 1;
+            reset 0x1;
+            access ro;
+            constraint c_st_CCR_XTALRDY {
+            };
+        };  #Crystal oscillator ready status, it equals 0 when reset assert, it equals 1 after oscillator is stable.
+    }; # Clock control register
+    register SCCR @16 {
+        bytes  4;
+        field CSW  @0 {
+            bits 3;
+            reset 0x0;
+            access rw;
+            constraint c_st_SCCR_CSW {
+            };
+        };  #System clock switch
+        field CSWE  @3 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_SCCR_CSWE {
+            };
+        };  #Clock switch write enable
+        field CSWS  @4 {
+            bits 3;
+            reset 0x0;
+            access ro;
+            constraint c_st_SCCR_CSWS {
+            };
+        };  #System clock switch status
+        field SCPRE  @8 {
+            bits 7;
+            reset 0x00;
+            access rw;
+            constraint c_st_SCCR_SCPRE {
+                value inside { ['h00:'h1F] };
+            };
+        };  #System clock prescaler, 0x0: ROOTCLK divided by 1(default), 0x1F: ROOTCLK divided by 127
+        field SCPWE  @15 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_SCCR_SCPWE {
+            };
+        };  #System clock prescaler write enable
+    }; # System clock configuration register
+    register D1BCCR @20 {
+        bytes  4;
+        field PCK1PRE  @0 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1BCCR_PCK1PRE {
+            };
+        };  #PCK1 prescaler
+        field PCK1PWE  @2 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_D1BCCR_PCK1PWE {
+            };
+        };  #PCK1 prescaler write enable
+        field PCK2PRE  @4 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1BCCR_PCK2PRE {
+            };
+        };  #PCK2 prescaler
+        field PCK2PWE  @6 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_D1BCCR_PCK2PWE {
+            };
+        };  #PCK2 prescaler write enable
+        field D1BCPRE  @8 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1BCCR_D1BCPRE {
+            };
+        };  #Domain1 bus clock prescaler
+        field D1BCPWE  @10 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_D1BCCR_D1BCPWE {
+            };
+        };  #Domain1 bus clock prescaler write enable
+    }; # Domain1 bus clock configuration register
+    register D2BCCR @24 {
+        bytes  4;
+        field PCK3PRE  @0 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2BCCR_PCK3PRE {
+            };
+        };  #PCK3 prescaler
+        field PCK3PWE  @2 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_D2BCCR_PCK3PWE {
+            };
+        };  #PCK3 prescaler write enable
+        field D2BCPRE  @8 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2BCCR_D2BCPRE {
+            };
+        };  #Domain2 bus clock prescaler
+        field D2BCPWE  @10 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_D2BCCR_D2BCPWE {
+            };
+        };  #Domain2 bus clock prescaler write enable
+    }; # Domain2 bus clock configuration register
+    register PLLMCR @32 {
+        bytes  4;
+        field PLLMON  @0 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_PLLMCR_PLLMON {
+            };
+        };  #PLL ON/OFF control, default 0 = OFF after reset, softwate writing 1 can turn it ON, when CSWS=1-5, it can't be off, #PLLM.PDn
+        field PLLMRDY  @1 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_PLLMCR_PLLMRDY {
+            };
+        };  #PLL ready status, it equals 0 when reset assert or PLL OFF, it equals 1 after PLL is stable. #PLLM.LOCK&PLL_STABLE
+        field PLLBYP  @2 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_PLLMCR_PLLBYP {
+            };
+        };  #PLL bypass. When it equal 0, system clock will be crystal oscillator, otherwise system clock will be PLL post clock, #PLLM.LOCK&PLLM_STB
+        field PLLMD  @4 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_PLLMCR_PLLMD {
+            };
+        };  #PLL mode select. 0 = Fractional mode, 1 = Integer mode, it is only writen when PLLON(bit[0]) = 0, #PLLM.DSMPD
+        field PLLPSTPD  @5 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_PLLMCR_PLLPSTPD {
+            };
+        };  #Enable PLL phase clock generator. 0 = disable, 1= enalbe, #PLLM.FOUTPOSTDIVPDn
+        field PLLFO4PD  @6 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_PLLMCR_PLLFO4PD {
+            };
+        };  #Enable PLL phase clock4 generator. 0 = disable, 1= enalbe, #PLLM.FOUT4POSTDIVPDn
+        field RFDIV  @8 {
+            bits 6;
+            reset 0x01;
+            access rw;
+            constraint c_st_PLLMCR_RFDIV {
+                value inside { ['h1:'h3F] };
+            };
+        };  #PLL reference clock pre-divide value, it is only writen when PLLON(bit[0]) = 0
+        field IFBDIV  @14 {
+            bits 12;
+            reset 0x014;
+            access rw;
+            constraint c_st_PLLMCR_IFBDIV {
+                value inside { ['h14:'h0F0] };
+            };
+        };  #PLL Integer portion of feedback divide value (16 to 2400 in integer mode, 20 to 240 in fractional mode), it is only writen when PLLON(bit[0]) = 0
+        field PSDIV1  @26 {
+            bits 3;
+            reset 0x2;
+            access rw;
+            constraint c_st_PLLMCR_PSDIV1 {
+                value inside { ['h1:'h7] };
+            };
+        };  #PLL post divider 1, range 1 to 7, Total post divide is PSDIV1*PSDIV2, must PSDIV1 >= PSDIV2, it is only writen when PLLON(bit[0]) = 0
+        field PSDIV2  @29 {
+            bits 3;
+            reset 0x1;
+            access rw;
+            constraint c_st_PLLMCR_PSDIV2 {
+                value inside { ['h1:'h7] };
+            };
+        };  #PLL post divider 2, range 1 to 7, Total post divide is PSDIV1*PSDIV2, must PSDIV1 >= PSDIV2, it is only writen when PLLON(bit[0]) = 0
+    }; # Main PLL control register
+    register PLLMFR @36 {
+        bytes  4;
+        field FFBDIV  @0 {
+            bits 24;
+            reset 0x000000;
+            access rw;
+            constraint c_st_PLLMFR_FFBDIV {
+                value inside { ['h000000:'hFFFFFF] };
+            };
+        };  #PLL fractional portion of feedback divide value
+    }; # Main PLL fractional devide register
+    register D1HFCCR @64 {
+        bytes  4;
+        field QSPI1PRE  @0 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1HFCCR_QSPI1PRE {
+            };
+        };  #QSPI1 function clock source prescaler
+        field U1PHYPRE  @4 {
+            bits 4;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1HFCCR_U1PHYPRE {
+                value inside { ['h2:'hF] };
+            };
+        };  #USB1 PHY clock source prescaler, 0x0 and 0x1 disabled clock
+    }; # Domain1 AHB peripheral function clock configuration register
+    register D1HFCSR @68 {
+        bytes  4;
+        field QSPI1CS  @0 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1HFCSR_QSPI1CS {
+            };
+        };  #QSPI1 function clock source selection
+        field U1PHYCS  @4 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1HFCSR_U1PHYCS {
+            };
+        };  #USB1 PHY clock source selection
+    }; # Domain1 AHB peripheral function clock selection register
+    register D2HFCCR @72 {
+        bytes  4;
+        field QSPI0PRE  @0 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2HFCCR_QSPI0PRE {
+            };
+        };  #QSPI0 function clock source prescaler
+        field U0PHYPRE  @4 {
+            bits 4;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2HFCCR_U0PHYPRE {
+                value inside { ['h2:'hF] };
+            };
+        };  #USB0 PHY clock source prescaler, 0x0 and 0x1 disabled clock
+    }; # Domain2 AHB peripheral function clock configuration register
+    register D2HFCSR @76 {
+        bytes  4;
+        field QSPI0CS  @0 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2HFCSR_QSPI0CS {
+            };
+        };  #QSPI0 function clock source selection
+        field U0PHYCS  @4 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2HFCSR_U0PHYCS {
+            };
+        };  #USB0 PHY clock source selection
+    }; # Domain2 AHB peripheral function clock selection register
+    register D1PFCCR @80 {
+        bytes  4;
+        field WDT1PRE  @26 {
+            bits 6;
+            reset 0x00;
+            access rw;
+            constraint c_st_D1PFCCR_WDT1PRE {
+                value inside { ['h2:'h3F] };
+            };
+        };  #WDT1 clock source prescaler, 0x0 and 0x1 disabled clock
+    }; # Domain1 APB peripheral function clock configuration register
+    register D1PFCSR @84 {
+        bytes  4;
+        field I2C0CS  @0 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PFCSR_I2C0CS {
+            };
+        };  #I2C0 function clock source selection
+        field I2C1CS  @2 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PFCSR_I2C1CS {
+            };
+        };  #I2C1 function clock source selection
+        field UART1CS  @18 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PFCSR_UART1CS {
+            };
+        };  #UART1 function clock source selection
+        field UART2CS  @20 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PFCSR_UART2CS {
+            };
+        };  #UART2 function clock source selection
+        field SPI0CS  @24 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PFCSR_SPI0CS {
+            };
+        };  #SPI0 function clock source selection
+        field SPI1CS  @26 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PFCSR_SPI1CS {
+            };
+        };  #SPI1 function clock source selection
+        field WDT1CS  @30 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PFCSR_WDT1CS {
+            };
+        };  #WDT1 function clock source selection
+    }; # Domain1 APB peripheral function clock selection register
+    register D2PFCCR @88 {
+        bytes  4;
+        field I2S0PRE  @0 {
+            bits 4;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PFCCR_I2S0PRE {
+                value inside { ['h0:'hF] };
+            };
+        };  #I2S0 function clock source prescaler, divided by 1-15
+        field I2S1PRE  @4 {
+            bits 4;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PFCCR_I2S1PRE {
+                value inside { ['h0:'hF] };
+            };
+        };  #I2S1 function clock source prescaler, divided by 1-15
+        field PDMPRE  @16 {
+            bits 4;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PFCCR_PDMPRE {
+                value inside { ['h0:'hF] };
+            };
+        };  #PDM function clock source prescaler, divided by 1-15
+        field ADCPRE  @20 {
+            bits 4;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PFCCR_ADCPRE {
+                value inside { ['h0:'hF] };
+            };
+        };  #ADC function clock source prescaler, divided by 1-15
+        field WDT0PRE  @26 {
+            bits 6;
+            reset 0x00;
+            access rw;
+            constraint c_st_D2PFCCR_WDT0PRE {
+                value inside { ['h2:'h3F] };
+            };
+        };  #WDT0 clock source prescaler, 0x0 and 0x1 disabled clock
+    }; # Domain2 APB peripheral function clock configuration register
+    register D2PFCSR @92 {
+        bytes  4;
+        field UART0CS  @0 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PFCSR_UART0CS {
+            };
+        };  #UART0 function clock source selection
+        field I2S0CS  @16 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PFCSR_I2S0CS {
+            };
+        };  #I2S0 function clock source selection
+        field I2S1CS  @18 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PFCSR_I2S1CS {
+            };
+        };  #I2S1 function clock source selection
+        field PDMCS  @24 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PFCSR_PDMCS {
+            };
+        };  #PDM function clock source selection
+        field ADCCS  @28 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PFCSR_ADCCS {
+            };
+        };  #ADC function clock source selection
+        field WDT0CS  @30 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PFCSR_WDT0CS {
+            };
+        };  #WDT0 function clock source selection
+    }; # Domain2 APB peripheral function clock selection register
+    register COCR @96 {
+        bytes  4;
+        field CO1S  @0 {
+            bits 3;
+            reset 0x0;
+            access rw;
+            constraint c_st_COCR_CO1S {
+            };
+        };  #CLKO1 clock select
+        field CO1DIV  @4 {
+            bits 3;
+            reset 0x0;
+            access rw;
+            constraint c_st_COCR_CO1DIV {
+            };
+        };  #CLKO1 clock divider
+        field CO1DWE  @7 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_COCR_CO1DWE {
+            };
+        };  #CLKO1 DIV write enable
+        field CO2S  @8 {
+            bits 3;
+            reset 0x0;
+            access rw;
+            constraint c_st_COCR_CO2S {
+            };
+        };  #CLKO2 clock select
+        field CO2DIV  @12 {
+            bits 3;
+            reset 0x0;
+            access rw;
+            constraint c_st_COCR_CO2DIV {
+            };
+        };  #CLKO2 clock divider
+        field CO2DWE  @15 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_COCR_CO2DWE {
+            };
+        };  #CLKO2 DIV write enable
+        field RTCPRE  @16 {
+            bits 10;
+            reset 0x000;
+            access rw;
+            constraint c_st_COCR_RTCPRE {
+                value inside { ['h2:'h3FF] };
+            };
+        };  #HSE division factor for RTC clock, 0x0 and 0x1 no clock
+    }; # Clock outputting configuration register
+    register CIER @100 {
+        bytes  4;
+    }; # Clock source interrupt enable register
+    register CIFR @104 {
+        bytes  4;
+    }; # Clock source interrupt flag register
+    register CICR @108 {
+        bytes  4;
+    }; # Clock source interrupt clear register
+    register RTCCR @112 {
+        bytes  4;
+        field XTAL32ON  @0 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_RTCCR_XTAL32ON {
+            };
+        };  #Crystal XTAL32 ON/OFF, default OFF, softwate can turn it on/off. When CSWS=6 or RTC hase been enabled, it can't be off
+        field XTAL32RDY  @1 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_RTCCR_XTAL32RDY {
+            };
+        };  #XTAL32 OSC ready status, it equals 0 when reset assert, it equals 1 after oscillator is stable.
+        field XTAL32BYP  @2 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_RTCCR_XTAL32BYP {
+            };
+        };  #XTAL32 OSC bypass, it equals 0 when reset assert, 0=OSC, 1=Bypass OSC
+        field RTCEN  @12 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_RTCCR_RTCEN {
+            };
+        };  #RTC clock enable
+        field RTCCS  @13 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_RTCCR_RTCCS {
+            };
+        };  #RTC clock source selection
+    }; # RTC control register
+    register XPRSTR @128 {
+        bytes  4;
+        field NPURST  @0 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_XPRSTR_NPURST {
+            };
+        };  #NPU block reset
+    }; # Domain1 AXI peripheral reset register
+    register H1PRSTR @132 {
+        bytes  4;
+        field DMA0RST  @0 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_H1PRSTR_DMA0RST {
+            };
+        };  #DMA0 block reset
+        field QSPI1RST  @10 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_H1PRSTR_QSPI1RST {
+            };
+        };  #QSPI1 block reset
+        field USB1RST  @14 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_H1PRSTR_USB1RST {
+            };
+        };  #USB1 block reset
+    }; 
+    register H2PRSTR @136 {
+        bytes  4;
+        field DMA2RST  @2 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_H2PRSTR_DMA2RST {
+            };
+        };  #DMA2 block reset
+        field QSPI0RST  @9 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_H2PRSTR_QSPI0RST {
+            };
+        };  #QSPI0 block reset
+        field USB0RST  @13 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_H2PRSTR_USB0RST {
+            };
+        };  #USB0 block reset
+        field AESRST  @17 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_H2PRSTR_AESRST {
+            };
+        };  #AES block reset
+        field PKARST  @18 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_H2PRSTR_PKARST {
+            };
+        };  #PKA block reset
+        field SHARST  @19 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_H2PRSTR_SHARST {
+            };
+        };  #SHA block reset
+        field CRCRST  @24 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_H2PRSTR_CRCRST {
+            };
+        };  #CRC block reset
+    }; # Domain2 AHB peripheral reset register
+    register D1PRSTR @140 {
+        bytes  4;
+        field I2C0RST  @0 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PRSTR_I2C0RST {
+            };
+        };  #I2C0 block reset
+        field I2C1RST  @1 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PRSTR_I2C1RST {
+            };
+        };  #I2C1 block reset
+        field UART1RST  @9 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PRSTR_UART1RST {
+            };
+        };  #UART1 block reset
+        field UART2RST  @10 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PRSTR_UART2RST {
+            };
+        };  #UART2 block reset
+        field SPI0RST  @16 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PRSTR_SPI0RST {
+            };
+        };  #SPI0 block reset
+        field SPI1RST  @17 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PRSTR_SPI1RST {
+            };
+        };  #SPI1 block reset
+        field WDT1RST  @31 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PRSTR_WDT1RST {
+            };
+        };  #WDT1 block reset
+    }; # Domain1 APB peripheral reset register
+    register D2PRSTR @144 {
+        bytes  4;
+        field UART0RST  @8 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PRSTR_UART0RST {
+            };
+        };  #UART0 block reset
+        field I2S0RST  @16 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PRSTR_I2S0RST {
+            };
+        };  #I2S0 block reset
+        field I2S1RST  @17 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PRSTR_I2S1RST {
+            };
+        };  #I2S1 block reset
+        field PDMRST  @20 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PRSTR_PDMRST {
+            };
+        };  #PDM block reset
+        field VADRST  @24 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PRSTR_VADRST {
+            };
+        };  #VAD block reset
+        field ADCRST  @25 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PRSTR_ADCRST {
+            };
+        };  #ADC block reset
+        field GPIORST  @26 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PRSTR_GPIORST {
+            };
+        };  #GPIO block reset
+        field FFTRST  @29 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PRSTR_FFTRST {
+            };
+        };  #FFT block reset
+        field WDT0RST  @30 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PRSTR_WDT0RST {
+            };
+        };  #WDT0 block reset
+    }; # Domain2 APB peripheral reset register
+    register XPRSFR @152 {
+        bytes  4;
+        field NPURSF  @0 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_XPRSFR_NPURSF {
+            };
+        };  #NPU block reset flag
+    }; # Domain1 AXI peripheral reset status flag register
+    register D1HPRSTR @156 {
+        bytes  4;
+        field DMA0RSF  @0 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D1HPRSTR_DMA0RSF {
+            };
+        };  #DMA0 block reset  flag
+        field QSPI1RSF  @10 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D1HPRSTR_QSPI1RSF {
+            };
+        };  #QSPI1 block reset flag
+        field USB1RSF  @14 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D1HPRSTR_USB1RSF {
+            };
+        };  #USB1 block reset flag
+    }; # Domain1 AHB peripheral reset status flag register
+    register D2HPRSTR @160 {
+        bytes  4;
+        field DMA2RSF  @2 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2HPRSTR_DMA2RSF {
+            };
+        };  #DMA2 block reset flag
+        field QSPI0RSF  @9 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2HPRSTR_QSPI0RSF {
+            };
+        };  #QSPI0 block reset flag
+        field USB0RSF  @13 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2HPRSTR_USB0RSF {
+            };
+        };  #USB0 block reset flag
+        field AESRSF  @17 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2HPRSTR_AESRSF {
+            };
+        };  #AES block reset flag
+        field PKARSF  @18 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2HPRSTR_PKARSF {
+            };
+        };  #PKA block reset flag
+        field SHARSF  @19 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2HPRSTR_SHARSF {
+            };
+        };  #SHA block reset flag
+        field CRCRSF  @24 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2HPRSTR_CRCRSF {
+            };
+        };  #CRC block reset flag
+    }; # Domain2 AHB peripheral reset status flag register
+    register D1PPRSTR @164 {
+        bytes  4;
+        field I2C0RSF  @0 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D1PPRSTR_I2C0RSF {
+            };
+        };  #I2C0 block reset flag
+        field I2C1RSF  @1 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D1PPRSTR_I2C1RSF {
+            };
+        };  #I2C1 block reset flag
+        field UART1RSF  @9 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D1PPRSTR_UART1RSF {
+            };
+        };  #UART1 block reset flag
+        field UART2RSF  @10 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D1PPRSTR_UART2RSF {
+            };
+        };  #UART2 block reset flag
+        field SPI0RSF  @16 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D1PPRSTR_SPI0RSF {
+            };
+        };  #SPI0 block reset flag
+        field SPI1RSF  @17 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D1PPRSTR_SPI1RSF {
+            };
+        };  #SPI1 block reset flag
+        field WDT1RSF  @31 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D1PPRSTR_WDT1RSF {
+            };
+        };  #WDT1 block reset flag
+    }; # Domain1 APB peripheral reset status flag register
+    register D2PPRSTR @168 {
+        bytes  4;
+        field UART0RSF  @8 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2PPRSTR_UART0RSF {
+            };
+        };  #UART0 block reset flag
+        field I2S0RSF  @16 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2PPRSTR_I2S0RSF {
+            };
+        };  #I2S0 block reset flag
+        field I2S1RSF  @17 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2PPRSTR_I2S1RSF {
+            };
+        };  #I2S1 block reset flag
+        field PDMRSF  @21 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2PPRSTR_PDMRSF {
+            };
+        };  #PDM block reset flag
+        field VADRSF  @24 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2PPRSTR_VADRSF {
+            };
+        };  #VAD block reset flag
+        field ADCRSF  @25 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2PPRSTR_ADCRSF {
+            };
+        };  #ADC block reset flag
+        field GPIORSF  @26 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2PPRSTR_GPIORSF {
+            };
+        };  #GPIO block reset flag
+        field FFTRSF  @29 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2PPRSTR_FFTRSF {
+            };
+        };  #FFT block reset flag
+        field WDT0RSF  @30 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_D2PPRSTR_WDT0RSF {
+            };
+        };  #WDT0 block reset flag
+    }; # Domain2 APB peripheral reset status flag register
+    register GRCR @176 {
+        bytes  4;
+        field WDG0RSC  @0 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_GRCR_WDG0RSC {
+            };
+        };  #WDG0 reset scope control
+        field WDG1RSC  @1 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_GRCR_WDG1RSC {
+            };
+        };  #WDG1 reset scope control
+    }; # Global reset control register
+    register SSCRSTR @192 {
+        bytes  4;
+        field SSCRST  @0 {
+            bits 16;
+            reset 0x0000;
+            access rwrtg;
+            constraint c_st_SSCRSTR_SSCRST {
+            };
+        };  #Software system cold reset, write AA55H, subsequently read to triggle reset, reading only return 0
+    }; # Software system cold reset register
+    register SSWRSTR @196 {
+        bytes  4;
+        field SSWRST  @0 {
+            bits 16;
+            reset 0x0000;
+            access rwrtg;
+            constraint c_st_SSWRSTR_SSWRST {
+            };
+        };  #Software system warm reset, write AA55H, subsequently read to triggle reset, reading only return 0
+    }; # Software system warm reset register
+    register D1RSTR @200 {
+        bytes  4;
+        field D1SRST  @0 {
+            bits 16;
+            reset 0x0000;
+            access rwrtg;
+            constraint c_st_D1RSTR_D1SRST {
+            };
+        };  #Domain1 software reset, write AA55H, subsequently read to triggle reset, reading only return 0
+    }; # Domain1 software reset register
+    register D2RSTR @204 {
+        bytes  4;
+        field D2SRST  @0 {
+            bits 16;
+            reset 0x0000;
+            access rwrtg;
+            constraint c_st_D2RSTR_D2SRST {
+            };
+        };  #Domain2 software reset, write AA55H, subsequently read to triggle reset, reading only return 0
+    }; # Domain2 software reset register
+    register C1RSTR @208 {
+        bytes  4;
+        field C1RST  @0 {
+            bits 16;
+            reset 0x0000;
+            access rwrtg;
+            constraint c_st_C1RSTR_C1RST {
+            };
+        };  #CPU1 and bus cold reset, write AA55H, subsequently read to triggle reset, reading only return 0
+    }; # CPU1 reset register
+    register C2RSTR @212 {
+        bytes  4;
+        field C2RST  @0 {
+            bits 16;
+            reset 0x0000;
+            access rwrtg;
+            constraint c_st_C2RSTR_C2RST {
+            };
+        };  #CPU2 and bus cold reset, write AA55H, subsequently read to triggle reset, reading only return 0
+    }; # CPU2 reset register
+    register SRSR @224 {
+        bytes  4;
+        field C1RSTF  @0 {
+            bits 1;
+            reset 0x0;
+            access rw1c;
+            constraint c_st_SRSR_C1RSTF {
+            };
+        };  #CPU1 reset flag, Clear by software by writing 1
+        field C2RSTF  @1 {
+            bits 1;
+            reset 0x1;
+            access rw1c;
+            constraint c_st_SRSR_C2RSTF {
+            };
+        };  #CPU2 reset flag, Clear by software by writing 1
+        field D1PORRSTF  @2 {
+            bits 1;
+            reset 0x0;
+            access rw1c;
+            constraint c_st_SRSR_D1PORRSTF {
+            };
+        };  #D1 domain power reset flag, Clear by software by writing 1
+        field D2PORRSTF  @2 {
+            bits 1;
+            reset 0x1;
+            access rw1c;
+            constraint c_st_SRSR_D2PORRSTF {
+            };
+        };  #D2 domain power reset flag, Clear by software by writing 1
+        field BORRSTF  @3 {
+            bits 1;
+            reset 0x0;
+            access rw1c;
+            constraint c_st_SRSR_BORRSTF {
+            };
+        };  #BOR reset flag, Clear by software by writing 1
+        field PINRSTF  @4 {
+            bits 1;
+            reset 0x1;
+            access rw1c;
+            constraint c_st_SRSR_PINRSTF {
+            };
+        };  #Pin reset flag, Clear by software by writing 1
+        field PORRSTF  @5 {
+            bits 1;
+            reset 0x1;
+            access rw1c;
+            constraint c_st_SRSR_PORRSTF {
+            };
+        };  #POR/PDR reset flag, Clear by software by writing 1
+        field SSCRSTF  @6 {
+            bits 1;
+            reset 0x0;
+            access rw1c;
+            constraint c_st_SRSR_SSCRSTF {
+            };
+        };  #Software system reset flag, Clear by software by writing 1
+        field SSWRSTF  @7 {
+            bits 1;
+            reset 0x0;
+            access rw1c;
+            constraint c_st_SRSR_SSWRSTF {
+            };
+        };  #Software system warm reset flag, Clear by software by writing 1
+        field D1SRSTF  @8 {
+            bits 1;
+            reset 0x0;
+            access rw1c;
+            constraint c_st_SRSR_D1SRSTF {
+            };
+        };  #D1 domain software reset flag, Clear by software by writing 1
+        field C1RSTF_1  @10 {
+            bits 1;
+            reset 0x0;
+            access rw1c;
+            constraint c_st_SRSR_C1RSTF_1 {
+            };
+        };  #CPU1 software reset flag, Clear by software by writing 1
+        field C2RSTF_1  @11 {
+            bits 1;
+            reset 0x0;
+            access rw1c;
+            constraint c_st_SRSR_C2RSTF_1 {
+            };
+        };  #CPU2 software reset flag, Clear by software by writing 1
+        field WDG0RSTF  @12 {
+            bits 1;
+            reset 0x0;
+            access rw1c;
+            constraint c_st_SRSR_WDG0RSTF {
+            };
+        };  #Watchdog0 reset flag
+        field WDG1RSTF  @13 {
+            bits 1;
+            reset 0x0;
+            access rw1c;
+            constraint c_st_SRSR_WDG1RSTF {
+            };
+        };  #Watchdog1 reset flag
+    }; # System reset status register
+    register D1XPCCR @228 {
+        bytes  4;
+        field NPUEN  @0 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1XPCCR_NPUEN {
+            };
+        };  #NPU clock enable
+    }; # Domain1 AXI peripheral clock control register
+    register D1HPCCR @232 {
+        bytes  4;
+        field DMA0EN  @0 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1HPCCR_DMA0EN {
+            };
+        };  #DMA0 clock enable
+        field QSPI1EN  @10 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1HPCCR_QSPI1EN {
+            };
+        };  #QSPI1 clock enable
+        field USB1EN  @14 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1HPCCR_USB1EN {
+            };
+        };  #USB1 (OTG_HS2) clock enable
+    }; # Domain1 AHB peripheral clock control register
+    register D2HPCCR @236 {
+        bytes  4;
+        field DMA2EN  @2 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2HPCCR_DMA2EN {
+            };
+        };  #DMA2 clock enable
+        field QSPI0EN  @9 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2HPCCR_QSPI0EN {
+            };
+        };  #QSPI0 clock enable
+        field USB0EN  @13 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2HPCCR_USB0EN {
+            };
+        };  #USB0 clock enable
+        field AESEN  @17 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2HPCCR_AESEN {
+            };
+        };  #AES clock enable
+        field PKAEN  @18 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2HPCCR_PKAEN {
+            };
+        };  #PKA clock enable
+        field SHAEN  @19 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2HPCCR_SHAEN {
+            };
+        };  #SHA clock enable
+        field CRCEN  @24 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2HPCCR_CRCEN {
+            };
+        };  #CRC clock enable
+    }; # Domain2 AHB peripheral clock control register
+    register D1PPCCR @240 {
+        bytes  4;
+        field I2C0EN  @0 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PPCCR_I2C0EN {
+            };
+        };  #I2C0 clock enable
+        field I2C1EN  @1 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PPCCR_I2C1EN {
+            };
+        };  #I2C1 clock enable
+        field UART1ENT  @9 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PPCCR_UART1ENT {
+            };
+        };  #UART1 clock enable
+        field UART1EN  @9 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PPCCR_UART1EN {
+            };
+        }; 
+        field UART2EN  @10 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PPCCR_UART2EN {
+            };
+        };  #UART2 clock enable
+        field SPI0EN  @16 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PPCCR_SPI0EN {
+            };
+        };  #SPI0 clock enable
+        field SPI1EN  @17 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PPCCR_SPI1EN {
+            };
+        };  #SPI1 clock enable
+        field WDT1EN  @31 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D1PPCCR_WDT1EN {
+            };
+        };  #WDT1 clock enable
+    }; # Domain1 APB peripheral clock control register
+    register D2PPCCR @244 {
+        bytes  4;
+        field UART0EN  @8 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PPCCR_UART0EN {
+            };
+        };  #UART0 clock enable
+        field I2S0EN  @16 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PPCCR_I2S0EN {
+            };
+        };  #I2S0 clock enable
+        field I2S1EN  @17 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PPCCR_I2S1EN {
+            };
+        };  #I2S1 clock enable
+        field PDMEN  @20 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PPCCR_PDMEN {
+            };
+        };  #PDM clock enable
+        field VADEN  @24 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PPCCR_VADEN {
+            };
+        };  #VAD clock enable
+        field VADENT  @24 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PPCCR_VADENT {
+            };
+        }; 
+        field ADCEN  @25 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PPCCR_ADCEN {
+            };
+        };  #ADC clock enable
+        field GPIOEN  @26 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PPCCR_GPIOEN {
+            };
+        };  #GPIO clock enable
+        field FFTEN  @29 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PPCCR_FFTEN {
+            };
+        };  #FFT clock enable
+        field WDT0EN  @30 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_D2PPCCR_WDT0EN {
+            };
+        };  #WDT0 clock enable
+    }; # Domain2 APB peripheral clock control register
+} ; 

@@ -7,5 +7,5 @@
 *.obj
 *.exe
 *.json
-/uvm
 /module_check
+uvm/ral_soc_bak.sv

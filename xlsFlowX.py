@@ -389,9 +389,20 @@ class St_Peripheral:
         addr_str += ' + '+ self.addressOffset
         return addr_str
     
+    def getHexAddrStr(self):
+        addr_str = self.baseAddress
+        addr_int = getIntValFromHexString(addr_str)
+        if self.addressOffset:
+            offset_int = getIntValFromHexString(self.addressOffset)
+            addr_int += offset_int
+            pass
+        addr_str = getHexStr(addr_int)
+        return addr_str
+    
     def getDirectAddrStr(self):
         addr_str = self.baseAddress
-        addr_str += ' + '+ self.addressOffset
+        if self.addressOffset and self.addressOffset!='0':
+            addr_str += ' + '+ self.addressOffset
         return addr_str
 
     def getheaderStructName(self):
@@ -469,7 +480,7 @@ class St_Peripheral:
 
 
 class St_Device:
-    def __init__(self, name):
+    def __init__(self, name:str):
         self.name = name
         self.vendor = ''
         self.version = ''
@@ -480,6 +491,7 @@ class St_Device:
         self.memories = []
         self.peripherals = {}
         self.interrupts = set()
+        self.module_sysDomain_Perip_dict ={}
 
     def get_inst_str(self):
         inst_str = 'Device: \n'
@@ -1873,222 +1885,227 @@ def get_sequence_sv_clu(clu:St_Cluster,module_index:str, parent_clu_name:str,tab
         pass
     return clu_regReset_ignore_str, clu_regAccess_ignore_str, bAllRegFdHdlPathEmpty
 
-def output_SequenceSv_moduleFile(preip_lst:list,modName:str,version:str):
+def output_SequenceSv_moduleFile(sysDomain_PeripList:dict,modName:str,version:str):
     modName = modName.lower()
     out_sv_module_Name = f'{modName}_v_reg_test_sequence'
     out_file_name = out_sv_module_Name+'.sv'
     out_file_Pathname = './uvm/'+out_file_name
     if sys.platform == 'linux':
         out_file_Pathname = os.path.join(get_output_dut_cfg_dir(), out_file_name)
-    if preip_lst:
+    with open(out_file_Pathname, 'w+') as sv_file:
+        fileHeader = f'/**\n * @file    {out_file_name}\n'
+        fileHeader += f' * @author  CIP Application Team\n # @brief   {modName} sequence UVM test .\n'
+
+        # 格式化成2016-03-20 11:45:39形式
+        today = date.today()
+        fileHeader += f' # @version {version} \n # @date    {today.strftime("%y-%m-%d")}\n'
+        fileHeader += """
+ *
+ ******************************************************************************
+ * @copyright
+ *
+"""
+        fileHeader += f' *  <h2><center>&copy; Copyright (c){today.year} CIP United Co.\n'
+        fileHeader += """
+ * All rights reserved.</center></h2>
+ *
+ * 
+ *
+ ******************************************************************************
+
+*/
+
+"""
+        fileStr = '\n'
+        fileStr += f'class {modName}_v_reg_test_sequence extends cip_base_sequence;\n\n'
+        fileStr += f'{cst_tab_str}`uvm_object_utils({modName}_v_reg_test_sequence)\n\n'
+        fileStr += f'{cst_tab_str}function new(string name="{modName}_v_reg_test_sequence");\n'
+        fileStr += f'{cst_tab_str}{cst_tab_str}super.new(name);\n{cst_tab_str}endfunction\n\n'
+        fileStr += f'{cst_tab_str}virtual task body();\n'
+        fileStr += f'{cst_tab_str}{cst_tab_str}super.body;\n'
+        bAllRegFdHdlPathEmpty = True
+        modName_U = modName.upper()
+        mod_fd_access_str =''
         
-        with open(out_file_Pathname, 'w+') as sv_file:
+        bDomainDefined = False
+        for sysDomain in sysDomain_PeripList:
+            preip_lst = sysDomain_PeripList[sysDomain]
+            if preip_lst:
+                domain_str = f'SYSTEMDOMAIN_{sysDomain}'
+                fileStr += F'\n`ifdef {domain_str}\n'
+                if not bDomainDefined:
+                    fileHeader += f'`define {domain_str}\n'
+                    bDomainDefined = True
+                else:
+                    fileHeader += f'//`define {domain_str}\n'
+                rst_seq_str =f'{sysDomain}_reg_rst_seq'
+                rst_access_str =f'{sysDomain}_reg_access_seq'
+                fileStr += f'{cst_tab_str}{cst_tab_str}uvm_reg_hw_reset_seq     {rst_seq_str};\n'
+                modinstCount= len(preip_lst)
+                mod_reg_Reset_ignore_str =''
+                module_inst = preip_lst[0]
+                tab_str = cst_tab_str +cst_tab_str
+                if modinstCount > 1 :
+                    module_index = f'{sysDomain}_{modName_U}[n]'
+                    tab_str += cst_tab_str
+                else:
+                    module_index = f'{sysDomain}_{modName_U}'
+            
+                if isinstance(module_inst,St_Peripheral):
+                    for reg in module_inst.clust_reg_lst:
+                        if isinstance(reg,St_Cluster):
+                            clu_reset_str,clu_access_str,b =get_sequence_sv_clu(reg,module_index,'',tab_str)
+                            mod_reg_Reset_ignore_str += clu_reset_str
+                            mod_fd_access_str += clu_access_str
+                            if not b:
+                                bAllRegFdHdlPathEmpty = False
+                            pass
+                        elif isinstance(reg,St_Register):
+                            # if reg.bVirtual:
+                            #     continue
+                            if reg.name.upper() == 'RESERVED': #Reserved
+                                continue
+                            regReset_ignore_str,reg_access_str,bRegFdHdlPathEmpty = get_sequence_sv_reg(reg,module_index,reg.name,tab_str)
+                            if regReset_ignore_str:
+                                mod_reg_Reset_ignore_str += regReset_ignore_str
+                            if reg_access_str:
+                                mod_fd_access_str += reg_access_str
+                            if not bRegFdHdlPathEmpty:
+                                bAllRegFdHdlPathEmpty = False
+                            pass
+                        pass
+                    if mod_fd_access_str:
+                        mod_fd_access_str += '\n'
+                    if mod_reg_Reset_ignore_str:
+                        mod_reg_Reset_ignore_str += '\n'
+                    pass
+
+                if not bAllRegFdHdlPathEmpty:
+                    fileStr += f'{cst_tab_str}{cst_tab_str}uvm_reg_access_seq       {rst_access_str};\n\n'
+                
+
+                fileStr += f'{cst_tab_str}{cst_tab_str}`uvm_info("UVM_SEQ","register reset sequence started",UVM_LOW)\n'
+                fileStr += f'{cst_tab_str}{cst_tab_str}{rst_seq_str} = new();\n'
+                
+                if modinstCount > 1 :
+                    fileStr += f'{cst_tab_str}{cst_tab_str}for (int n=0; n< {modinstCount}; n++) begin\n'
+                    pass
+                fileStr += mod_reg_Reset_ignore_str
+                fileStr += f'{tab_str}{rst_seq_str}.model = p_sequencer.u_soc_reg_model.{module_index};\n'
+                fileStr += f'{tab_str}{rst_seq_str}.start(p_sequencer);\n'
+                if modinstCount > 1 :
+                    fileStr += f'{cst_tab_str}{cst_tab_str}end\n\n'
+                
+                fileStr += f'{cst_tab_str}{cst_tab_str}`uvm_info("UVM_SEQ","register reset sequence finished",UVM_LOW)\n\n'
+
+                if not bAllRegFdHdlPathEmpty:
+                    fileStr += f'{cst_tab_str}{cst_tab_str}`uvm_info("UVM_SEQ","register access sequence started",UVM_LOW)\n'
+                    fileStr += f'{cst_tab_str}{cst_tab_str}{rst_access_str} = new();\n'
+                    if modinstCount > 1 :
+                        fileStr += f'{cst_tab_str}{cst_tab_str}for (int n=0; n< {modinstCount}; n++) begin\n'
+                        pass
+                    fileStr += mod_fd_access_str      
+
+                    fileStr += f'{tab_str}{rst_access_str}.model = p_sequencer.u_soc_reg_model.{module_index};\n'
+                    fileStr += f'{tab_str}{rst_access_str}.start(p_sequencer);\n'
+    
+                    if modinstCount > 1 :
+                        fileStr += f'{cst_tab_str}{cst_tab_str}end\n\n'
+
+                    fileStr += f'{cst_tab_str}{cst_tab_str}`uvm_info("UVM_SEQ","register access sequence finished",UVM_LOW)\n'
+            
+                fileStr += F'`endif //{domain_str}\n'  
+
+        fileStr += f'\n{cst_tab_str}endtask: body\n\n'
+        fileStr += f'endclass:{modName}_v_reg_test_sequence\n'
+        fileHeader += fileStr
+        sv_file.write(fileHeader)
+
+        return out_file_Pathname
+    pass
+
+def output_uvm_sv_moduleFile(preip_inst:St_Peripheral,preip_name:str,version: str):
+    if isinstance(preip_inst,St_Peripheral):
+        out_ralf_file_Name = preip_name.lower()
+        module_Name = preip_inst.moduleName
+        preip_name = preip_name.upper()
+        out_file_name = out_ralf_file_Name+'.sv'
+        out_file_Pathname = './uvm/'+out_file_name
+        with open(out_file_Pathname, 'w+') as out_file:
             fileHeader = f'/**\n * @file    {out_file_name}\n'
-            fileHeader += f' * @author  CIP Application Team\n # @brief   {modName} sequence UVM test .\n'
+            fileHeader += f' * @author  CIP Application Team\n # @brief   {preip_name} Register struct Header File.\n'
+            fileHeader += ' *          This file contains:\n #           - Data structures and the address mapping for\n'
+            fileHeader += f" *             {preip_name} peripherals\n #           - Including peripheral's registers declarations and bits\n"
+            fileHeader += ' *             definition\n'
 
             # 格式化成2016-03-20 11:45:39形式
             today = date.today()
             fileHeader += f' # @version {version} \n # @date    {today.strftime("%y-%m-%d")}\n'
             fileHeader += """
-*
-******************************************************************************
-* @copyright
-*
+ *
+ ******************************************************************************
+ * @copyright
+ *
 """
             fileHeader += f' *  <h2><center>&copy; Copyright (c){today.year} CIP United Co.\n'
             fileHeader += """
-* All rights reserved.</center></h2>
-*
-* 
-*
-******************************************************************************
+ * All rights reserved.</center></h2>
+ *
+ * 
+ *
+ ******************************************************************************
 
 */
 
 """
-            fileStr = fileHeader
-            fileStr += f'class {modName}_v_reg_test_sequence extends cip_base_sequence;\n\n'
-            fileStr += f'{cst_tab_str}`uvm_object_utils({modName}_v_reg_test_sequence)\n\n'
-            fileStr += f'{cst_tab_str}function new(string name="{modName}_v_reg_test_sequence");\n'
-            fileStr += f'{cst_tab_str}{cst_tab_str}super.new(name);\n{cst_tab_str}endfunction\n\n'
-            fileStr += f'{cst_tab_str}virtual task body();\n\n'
-            fileStr += f'{cst_tab_str}{cst_tab_str}uvm_reg_hw_reset_seq     reg_rst_seq;\n'
-            bAllRegFdHdlPathEmpty = True
-            modName_U = modName.upper()
-            mod_fd_access_str =''
-            modinstCount= len(preip_lst)
-            mod_reg_Reset_ignore_str =''
-            module_inst = preip_lst[0]
-            tab_str = cst_tab_str +cst_tab_str
-            if modinstCount > 1 :
-                module_index = f'{modName_U}[n]'
-                tab_str += cst_tab_str
-            else:
-                module_index = modName_U
-            
-            if isinstance(module_inst,St_Peripheral):
-                for reg in module_inst.clust_reg_lst:
-                    if isinstance(reg,St_Cluster):
-                        clu_reset_str,clu_access_str,b =get_sequence_sv_clu(reg,module_index,'',tab_str)
-                        mod_reg_Reset_ignore_str += clu_reset_str
-                        mod_fd_access_str += clu_access_str
-                        if not b:
-                            bAllRegFdHdlPathEmpty = False
-                        pass
-                    elif isinstance(reg,St_Register):
-                        # if reg.bVirtual:
-                        #     continue
-                        if reg.name.upper() == 'RESERVED': #Reserved
-                            continue
-                        regReset_ignore_str,reg_access_str,bRegFdHdlPathEmpty = get_sequence_sv_reg(reg,module_index,reg.name,tab_str)
-                        if regReset_ignore_str:
-                            mod_reg_Reset_ignore_str += regReset_ignore_str
-                        if reg_access_str:
-                            mod_fd_access_str += reg_access_str
-                        if not bRegFdHdlPathEmpty:
-                            bAllRegFdHdlPathEmpty = False
-                        pass
-                    pass
-                if mod_fd_access_str:
-                    mod_fd_access_str += '\n'
-                if mod_reg_Reset_ignore_str:
-                    mod_reg_Reset_ignore_str += '\n'
-                pass
+            macro_name = f'RAL_MOD_{preip_name}'
+            fileHeader += f'`ifndef {macro_name}\n`define {macro_name}\n\n'
+            fileHeader += 'import uvm_pkg::*;\n\n'
 
-            if not bAllRegFdHdlPathEmpty:
-                fileStr += f'{cst_tab_str}{cst_tab_str}uvm_reg_access_seq       reg_access_seq;\n\n'
-            fileStr += f'{cst_tab_str}{cst_tab_str}super.body;\n\n'
-
-
-            fileStr += f'{cst_tab_str}{cst_tab_str}`uvm_info("UVM_SEQ","register reset sequence started",UVM_LOW)\n'
-            fileStr += f'{cst_tab_str}{cst_tab_str}reg_rst_seq = new();\n'
-            
-            if modinstCount > 1 :
-                fileStr += f'{cst_tab_str}{cst_tab_str}for (int n=0; n< {modinstCount}; n++) begin\n'
-                pass
-            fileStr += mod_reg_Reset_ignore_str
-            fileStr += f'{tab_str}reg_rst_seq.model = p_sequencer.u_soc_reg_model.{module_index};\n'
-            fileStr += f'{tab_str}reg_rst_seq.start(p_sequencer);\n'
-            if modinstCount > 1 :
-                fileStr += f'{cst_tab_str}{cst_tab_str}end\n\n'
-            
-            fileStr += f'{cst_tab_str}{cst_tab_str}`uvm_info("UVM_SEQ","register reset sequence finished",UVM_LOW)\n\n'
-
-            if not bAllRegFdHdlPathEmpty:
-                fileStr += f'{cst_tab_str}{cst_tab_str}`uvm_info("UVM_SEQ","register access sequence started",UVM_LOW)\n'
-                fileStr += f'{cst_tab_str}{cst_tab_str}reg_access_seq = new();\n'
-                if modinstCount > 1 :
-                    fileStr += f'{cst_tab_str}{cst_tab_str}for (int n=0; n< {modinstCount}; n++) begin\n'
-                    pass
-                fileStr += mod_fd_access_str      
-
-                fileStr += f'{tab_str}reg_access_seq.model = p_sequencer.u_soc_reg_model.{module_index};\n'
-                fileStr += f'{tab_str}reg_access_seq.start(p_sequencer);\n'
-  
-                if modinstCount > 1 :
-                    fileStr += f'{cst_tab_str}{cst_tab_str}end\n\n'
-
-                fileStr += f'{cst_tab_str}{cst_tab_str}`uvm_info("UVM_SEQ","register access sequence finished",UVM_LOW)\n'
-            
-            fileStr += f'\n{cst_tab_str}endtask: body\n\n'
-            fileStr += f'endclass:{modName}_v_reg_test_sequence\n'
-            sv_file.write(fileStr)
+            block_name, clu_reg_str_info = getCluRegStructInfo_uvm_sv(preip_inst.clust_reg_lst, module_Name,module_Name,0)
+            fileHeader += clu_reg_str_info
+            # 增加 ral_sys_
+            fileHeader += f'\n`endif // {macro_name}' 
+            out_file.write(fileHeader)
 
             return out_file_Pathname
     pass
 
-def output_uvm_sv_moduleFile(preip_lst:list,preip_name:str,version: str):
-    preip_inst = None
-    if preip_lst:
-        preip_inst = preip_lst[0]
-        if isinstance(preip_inst,St_Peripheral):
-            out_ralf_file_Name = preip_name.lower()
-            module_Name = preip_inst.moduleName
-            preip_name = preip_name.upper()
-            out_file_name = out_ralf_file_Name+'.sv'
-            out_file_Pathname = './uvm/'+out_file_name
-            with open(out_file_Pathname, 'w+') as out_file:
-                fileHeader = f'/**\n * @file    {out_file_name}\n'
-                fileHeader += f' * @author  CIP Application Team\n # @brief   {preip_name} Register struct Header File.\n'
-                fileHeader += ' *          This file contains:\n #           - Data structures and the address mapping for\n'
-                fileHeader += f" *             {preip_name} peripherals\n #           - Including peripheral's registers declarations and bits\n"
-                fileHeader += ' *             definition\n'
+def output_ralf_moduleFile(preip_inst:St_Peripheral,preip_name:str,version: str):
+    if isinstance(preip_inst,St_Peripheral):
+        out_ralf_file_Name = preip_name.lower()
+        module_Name = preip_inst.moduleName
+        preip_name = preip_name.upper()
+        out_file_name = out_ralf_file_Name+'.ralf'
+        out_file_Pathname = './uvm/'+out_file_name
+        with open(out_file_Pathname, 'w+') as out_file:
+            fileHeader = f' # @file    {out_file_name}\n'
+            fileHeader += f' # @author  CIP Application Team\n # @brief   {preip_name} Register struct Header File.\n'
+            fileHeader += ' #          This file contains:\n #           - Data structures and the address mapping for\n'
+            fileHeader += f" #             {preip_name} peripherals\n #           - Including peripheral's registers declarations and bits\n"
+            fileHeader += ' #             definition\n'
 
-                # 格式化成2016-03-20 11:45:39形式
-                today = date.today()
-                fileHeader += f' # @version {version} \n # @date    {today.strftime("%y-%m-%d")}\n'
-                fileHeader += """
-*
-******************************************************************************
-* @copyright
-*
-"""
-                fileHeader += f' *  <h2><center>&copy; Copyright (c){today.year} CIP United Co.\n'
-                fileHeader += """
-* All rights reserved.</center></h2>
-*
-* 
-*
-******************************************************************************
-
-*/
-
-"""
-                macro_name = f'RAL_MOD_{preip_name}'
-                fileHeader += f'`ifndef {macro_name}\n`define {macro_name}\n\n'
-                fileHeader += 'import uvm_pkg::*;\n\n'
-
-                block_name, clu_reg_str_info = getCluRegStructInfo_uvm_sv(preip_inst.clust_reg_lst, module_Name,module_Name,0)
-                fileHeader += clu_reg_str_info
-                # 增加 ral_sys_
-                fileHeader += f'\n`endif // {macro_name}' 
-                out_file.write(fileHeader)
-
-                return out_file_Pathname
-    pass
-
-def output_ralf_moduleFile(preip_lst:list,preip_name:str,version: str):
-    preip_inst = None
-    if preip_lst:
-        preip_inst = preip_lst[0]
-        if isinstance(preip_inst,St_Peripheral):
-            out_ralf_file_Name = preip_name.lower()
-            module_Name = preip_inst.moduleName
-            preip_name = preip_name.upper()
-            out_file_name = out_ralf_file_Name+'.ralf'
-            out_file_Pathname = './uvm/'+out_file_name
-            with open(out_file_Pathname, 'w+') as out_file:
-                fileHeader = f' # @file    {out_file_name}\n'
-                fileHeader += f' # @author  CIP Application Team\n # @brief   {preip_name} Register struct Header File.\n'
-                fileHeader += ' #          This file contains:\n #           - Data structures and the address mapping for\n'
-                fileHeader += f" #             {preip_name} peripherals\n #           - Including peripheral's registers declarations and bits\n"
-                fileHeader += ' #             definition\n'
-
-                # 格式化成2016-03-20 11:45:39形式
-                today = date.today()
-                fileHeader += f' # @version {version} \n # @date    {today.strftime("%y-%m-%d")}\n'
+            # 格式化成2016-03-20 11:45:39形式
+            today = date.today()
+            fileHeader += f' # @version {version} \n # @date    {today.strftime("%y-%m-%d")}\n'
 
 
-                fileHeader += f' # <h2><center>&copy; Copyright (c){today.year} CIP United Co.\n'
-                fileHeader += """
+            fileHeader += f' # <h2><center>&copy; Copyright (c){today.year} CIP United Co.\n'
+            fileHeader += """
  # All rights reserved.</center></h2>
  #
 
 """
                 
-
-                clu_reg_str_info = getCluRegStructInfo_Ralf(preip_inst.clust_reg_lst, module_Name,0)
-                fileHeader += clu_reg_str_info
-          
-                
-                out_file.write(fileHeader)
-
-                return out_file_Pathname
-    pass
+            clu_reg_str_info = getCluRegStructInfo_Ralf(preip_inst.clust_reg_lst, module_Name,0)
+            fileHeader += clu_reg_str_info
+                    
+            out_file.write(fileHeader)
+            return out_file_Pathname
+    
 
 def output_C_moduleFile(preip_lst:list, preip_name:str, version:str):
     preip_inst = None
-    
     if preip_lst:
         preip_inst = preip_lst[0]
         if isinstance(preip_inst,St_Peripheral):
@@ -2535,7 +2552,7 @@ def getModule_FdChkStr(mod_inst:St_Peripheral, errCount_var:str, errCount_Write_
     # fieldWriteCheckstr += '#endif //CHECK_MOUDLE_FIELD_WRITE_VALUE\n'
     return file_resetChk_str, field_WriteChk_str
 
-def output_C_FdValChk_moduleFile(module_inst_list:list, modName:str):
+def output_C_FdValChk_moduleFile(sysDomain_PeripList:dict, modName:str):
     # print(modName)
     out_C_file_Name=''
     if sys.platform == 'win32':
@@ -2582,11 +2599,6 @@ def output_C_FdValChk_moduleFile(module_inst_list:list, modName:str):
 // include "pll.h"
 
 """
-
-        for perip in module_inst_list:
-            perip_str = f'#define {perip.name}_BASE'.ljust(cst_Perip_SpaceSize)+f'({perip.getDirectAddrStr()})\n'
-            fileHeader += perip_str
-
         filebodystr = f'\n#include "../../reg/{modName.lower()}_regs.h"\n'
         filebodystr += """
 int main()
@@ -2594,96 +2606,113 @@ int main()
     //printf("enter main.\\n");
     uAptiv_clk_init();
 """
-        
-        mod_inst = module_inst_list[0]
-        module_Name = mod_inst.getheaderStructName()
-        module_st_name = f'{module_Name}_t'
-        filebodystr += f'{cst_tab_str}printf("After clock switch, Now Check Module: {modName}.\\n");\n'
-        filebodystr += f'{cst_tab_str}unsigned int nRegFdVal = 0;\n'
-        filebodystr += f'{cst_tab_str}unsigned int nTotalErr = 0;\n'
+        bDomainDefined = False
+        for sysDomain in sysDomain_PeripList:
+            perip_lst = sysDomain_PeripList[sysDomain]
+            if perip_lst:
+                domain_str = f'SYSTEMDOMAIN_{sysDomain}'
+                if not bDomainDefined:
+                    fileHeader += f'#define {domain_str}\n'
+                    bDomainDefined = True
+                else:
+                    fileHeader += f'//#define {domain_str}\n'
+                perip_str = domain_define_str = f'\n#ifdef {domain_str}\n'
+                domain_endif_str = f'#endif //{domain_str}\n'
+                for perip in perip_lst:
+                    perip_str += f'#define {perip.name}_BASE'.ljust(cst_Perip_SpaceSize)+f'({perip.getDirectAddrStr()})\n'
+                perip_str += domain_endif_str
+                fileHeader += perip_str
+                mod_inst = perip_lst[0]
+                module_Name = mod_inst.getheaderStructName()
+                module_st_name = f'{module_Name}_t'
+                filebodystr += domain_define_str
+                filebodystr += f'{cst_tab_str}printf("After clock switch, Now Check Module: {modName}.\\n");\n'
+                filebodystr += f'{cst_tab_str}unsigned int nRegFdVal = 0;\n'
+                filebodystr += f'{cst_tab_str}unsigned int nTotalErr = 0;\n'
 
-        mod_count = len(module_inst_list)
-        if mod_count > 1:
-            filebodystr += f'{cst_tab_str}{module_st_name} * module_inst[{mod_count}] = ' + \
-                '{'+f'{mod_inst.name}'
-            for i in range(1, mod_count):
-                filebodystr += f'\n{cst_tab_str}{cst_tab_str},{module_inst_list[i].name}'
-            filebodystr += '};\n\n'
-            filebodystr += '#ifdef CHECK_MODULE_FIELD_DEFAULT_VALUE\n'
-            filebodystr += f'{cst_tab_str}unsigned int nErrCount_default[{mod_count}] = '+'{0};\n'
-            filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
+                mod_count = len(perip_lst)
+                if mod_count > 1:
+                    filebodystr += f'{cst_tab_str}{module_st_name} * module_inst[{mod_count}] = ' + \
+                        '{'+f'{mod_inst.name}'
+                    for i in range(1, mod_count):
+                        filebodystr += f'\n{cst_tab_str}{cst_tab_str},{perip_lst[i].name}'
+                    filebodystr += '};\n\n'
+                    filebodystr += '#ifdef CHECK_MODULE_FIELD_DEFAULT_VALUE\n'
+                    filebodystr += f'{cst_tab_str}unsigned int nErrCount_default[{mod_count}] = '+'{0};\n'
+                    filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
 
-            filebodystr += '#ifdef CHECK_MOUDLE_FIELD_WRITE_VALUE\n'
-            filebodystr += f'{cst_tab_str}unsigned int nErrCount_wirte[{mod_count}] = '+'{0};\n'
-            filebodystr += '#endif // CHECK_MOUDLE_FIELD_WRITE_VALUE\n\n'
+                    filebodystr += '#ifdef CHECK_MOUDLE_FIELD_WRITE_VALUE\n'
+                    filebodystr += f'{cst_tab_str}unsigned int nErrCount_wirte[{mod_count}] = '+'{0};\n'
+                    filebodystr += '#endif // CHECK_MOUDLE_FIELD_WRITE_VALUE\n\n'
 
-            filebodystr += f'{cst_tab_str}for(int mi = 0; mi < {mod_count}; ++mi)\n'
-            filebodystr += cst_tab_str + '{\n'
-            filebodystr += '#ifdef CHECK_MODULE_FIELD_DEFAULT_VALUE\n'
-            modinst_var = 'module_inst[mi]'
-            errCount_var = 'nErrCount_default[mi]'
-            errCount_write_var = 'nErrCount_wirte[mi]'
-            str1, str2 = getModule_FdChkStr(mod_inst, errCount_var, errCount_write_var, modinst_var)
-            filebodystr += str1
-            filebodystr += f'{cst_tab_str}{cst_tab_str}if(nErrCount_default[mi])\n'
-            filebodystr += cst_tab_str+cst_tab_str+'{\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}Error("Inst_%u def-Vals have [%u] fds NOT Same!\\n", mi, nErrCount_default[mi]);\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_default[mi];\n'
-            filebodystr += cst_tab_str+cst_tab_str+'}\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}{cst_tab_str}Notice("Inst_%u def-Vals are OK!\\n", mi);\n'
-            filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
+                    filebodystr += f'{cst_tab_str}for(int mi = 0; mi < {mod_count}; ++mi)\n'
+                    filebodystr += cst_tab_str + '{\n'
+                    filebodystr += '#ifdef CHECK_MODULE_FIELD_DEFAULT_VALUE\n'
+                    modinst_var = 'module_inst[mi]'
+                    errCount_var = 'nErrCount_default[mi]'
+                    errCount_write_var = 'nErrCount_wirte[mi]'
+                    str1, str2 = getModule_FdChkStr(mod_inst, errCount_var, errCount_write_var, modinst_var)
+                    filebodystr += str1
+                    filebodystr += f'{cst_tab_str}{cst_tab_str}if(nErrCount_default[mi])\n'
+                    filebodystr += cst_tab_str+cst_tab_str+'{\n'
+                    filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}Error("Inst_%u def-Vals have [%u] fds NOT Same!\\n", mi, nErrCount_default[mi]);\n'
+                    filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_default[mi];\n'
+                    filebodystr += cst_tab_str+cst_tab_str+'}\n'
+                    filebodystr += f'{cst_tab_str}{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}{cst_tab_str}Notice("Inst_%u def-Vals are OK!\\n", mi);\n'
+                    filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
 
-            filebodystr += str2
-            filebodystr += f'{cst_tab_str}{cst_tab_str}if(nErrCount_wirte[mi])\n'
-            filebodystr += cst_tab_str+cst_tab_str+'{\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}Error("Inst_%u write-Vals have [%u] fds NOT Same!\\n", mi, nErrCount_wirte[mi]);\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_wirte[mi];\n'
-            filebodystr += cst_tab_str+cst_tab_str+'}\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}{cst_tab_str}Notice("Inst_%u write-Vals are OK!\\n", mi);\n'
-            filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
-            filebodystr += cst_tab_str+'}\n'
-        elif mod_count == 1:
-            filebodystr += f'{cst_tab_str}{module_st_name} * module_inst = {mod_inst.name} ;\n'
-            filebodystr += '#ifdef CHECK_MODULE_FIELD_DEFAULT_VALUE\n'
-            filebodystr += f'{cst_tab_str}unsigned int nErrCount_default = 0;\n'
-            filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
+                    filebodystr += str2
+                    filebodystr += f'{cst_tab_str}{cst_tab_str}if(nErrCount_wirte[mi])\n'
+                    filebodystr += cst_tab_str+cst_tab_str+'{\n'
+                    filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}Error("Inst_%u write-Vals have [%u] fds NOT Same!\\n", mi, nErrCount_wirte[mi]);\n'
+                    filebodystr += f'{cst_tab_str}{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_wirte[mi];\n'
+                    filebodystr += cst_tab_str+cst_tab_str+'}\n'
+                    filebodystr += f'{cst_tab_str}{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}{cst_tab_str}Notice("Inst_%u write-Vals are OK!\\n", mi);\n'
+                    filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
+                    filebodystr += cst_tab_str+'}\n'
+                elif mod_count == 1:
+                    filebodystr += f'{cst_tab_str}{module_st_name} * module_inst = {mod_inst.name} ;\n'
+                    filebodystr += '#ifdef CHECK_MODULE_FIELD_DEFAULT_VALUE\n'
+                    filebodystr += f'{cst_tab_str}unsigned int nErrCount_default = 0;\n'
+                    filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
 
-            filebodystr += '#ifdef CHECK_MOUDLE_FIELD_WRITE_VALUE\n'
-            filebodystr += f'{cst_tab_str}unsigned int nErrCount_wirte = 0;\n'
-            filebodystr += '#endif // CHECK_MOUDLE_FIELD_WRITE_VALUE\n\n'
+                    filebodystr += '#ifdef CHECK_MOUDLE_FIELD_WRITE_VALUE\n'
+                    filebodystr += f'{cst_tab_str}unsigned int nErrCount_wirte = 0;\n'
+                    filebodystr += '#endif // CHECK_MOUDLE_FIELD_WRITE_VALUE\n\n'
 
-            filebodystr += '#ifdef CHECK_MODULE_FIELD_DEFAULT_VALUE\n'
+                    filebodystr += '#ifdef CHECK_MODULE_FIELD_DEFAULT_VALUE\n'
 
-            modinst_var = 'module_inst'
-            errCount_var = 'nErrCount_default'
-            errCount_write_var = 'nErrCount_wirte'
-            # filebodystr += getModuleFdStr(mod_inst,
-            #                               errCount_var, modinst_var, False)
-            str1, str2 = getModule_FdChkStr(mod_inst, errCount_var, errCount_write_var, modinst_var, False)
+                    modinst_var = 'module_inst'
+                    errCount_var = 'nErrCount_default'
+                    errCount_write_var = 'nErrCount_wirte'
+                    # filebodystr += getModuleFdStr(mod_inst,
+                    #                               errCount_var, modinst_var, False)
+                    str1, str2 = getModule_FdChkStr(mod_inst, errCount_var, errCount_write_var, modinst_var, False)
 
-            filebodystr += str1
+                    filebodystr += str1
 
-            filebodystr += f'{cst_tab_str}if(nErrCount_default)\n'
-            filebodystr += cst_tab_str+'{\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}Error("Inst def-Vals have [%u] fds NOT Same!\\n", nErrCount_default);\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_default;\n'
-            filebodystr += cst_tab_str+'}\n'
-            filebodystr += f'{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}Notice("Inst def-Vals are OK!\\n");\n'
-            filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
+                    filebodystr += f'{cst_tab_str}if(nErrCount_default)\n'
+                    filebodystr += cst_tab_str+'{\n'
+                    filebodystr += f'{cst_tab_str}{cst_tab_str}Error("Inst def-Vals have [%u] fds NOT Same!\\n", nErrCount_default);\n'
+                    filebodystr += f'{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_default;\n'
+                    filebodystr += cst_tab_str+'}\n'
+                    filebodystr += f'{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}Notice("Inst def-Vals are OK!\\n");\n'
+                    filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
 
-            filebodystr += str2
-            filebodystr += f'{cst_tab_str}if(nErrCount_wirte)\n'
-            filebodystr += cst_tab_str+'{\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}Error("Inst write-Vals have [%u] fds NOT Same!\\n", nErrCount_wirte);\n'
-            filebodystr += f'{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_wirte;\n'
-            filebodystr += cst_tab_str+'}\n'
-            filebodystr += f'{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}Notice("Inst write-Vals are OK!\\n");\n'
-            filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
+                    filebodystr += str2
+                    filebodystr += f'{cst_tab_str}if(nErrCount_wirte)\n'
+                    filebodystr += cst_tab_str+'{\n'
+                    filebodystr += f'{cst_tab_str}{cst_tab_str}Error("Inst write-Vals have [%u] fds NOT Same!\\n", nErrCount_wirte);\n'
+                    filebodystr += f'{cst_tab_str}{cst_tab_str}nTotalErr += nErrCount_wirte;\n'
+                    filebodystr += cst_tab_str+'}\n'
+                    filebodystr += f'{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}Notice("Inst write-Vals are OK!\\n");\n'
+                    filebodystr += '#endif // CHECK_MODULE_FIELD_DEFAULT_VALUE\n\n'
 
-       
-        filebodystr += f'{cst_tab_str}if(nTotalErr == 0)\n'
-        filebodystr += f'{cst_tab_str}{cst_tab_str}Pass("{modName} Vals OK!\\n");\n'
-        filebodystr += f'{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}Fail("{modName} Vals Not OK!\\n");\n'
+                filebodystr += f'{cst_tab_str}if(nTotalErr == 0)\n'
+                filebodystr += f'{cst_tab_str}{cst_tab_str}Pass("{modName} Vals OK!\\n");\n'
+                filebodystr += f'{cst_tab_str}else\n{cst_tab_str}{cst_tab_str}Fail("{modName} Vals Not OK!\\n");\n'
+                filebodystr += domain_endif_str
+
         filebodystr += f'\n{cst_tab_str}return 0;\n'+'}\n'
         out_file.write(fileHeader)
         out_file.write(filebodystr)
@@ -2913,8 +2942,110 @@ def getRegFieldInfo_Ralf(tab_str:str, clu_reg: St_Register,baseOffset:int):
     return fileHeader
 
 
-def out_sys_uvm_sv(st_dev: St_Device):
+def out_sys_uvm_sv(dev: St_Device):
     #基于domain
+    out_file_name = dev.name + '_soc.sv'
+    # out_file_name = 'ral_soc.sv'
+    out_file_Pathname = './uvm/'+out_file_name
+    with open(out_file_Pathname, 'w+') as out_file:
+        fileHeader = f'/**\n * @file    {out_file_name}\n'
+        fileHeader += f' * @author  CIP Application Team\n # @brief   {dev.name} soc struct  File.\n'
+
+        # 格式化成2016-03-20 11:45:39形式
+        today = date.today()
+        fileHeader += f' # @version {dev.version} \n # @date    {today.strftime("%y-%m-%d")}\n'
+        fileHeader += """
+ *
+ ******************************************************************************
+ * @copyright
+ *
+"""
+        fileHeader += f' *  <h2><center>&copy; Copyright (c){today.year} CIP United Co.\n'
+        fileHeader += """
+ * All rights reserved.</center></h2>
+ *
+ * 
+ *
+ ******************************************************************************
+
+*/
+
+"""
+        devName = dev.name.upper()
+        fileHeader += f'`ifndef {devName}_SOC\n`define {devName}_SOC\n\n'
+        for p_name in dev.peripherals:
+            fileHeader += f'`include "{p_name}.sv"\n'
+
+        fileHeader += '\nimport uvm_pkg::*;\n\n'
+        fileHeader += 'class ral_sys_soc extends uvm_reg_block;\n'
+        cls_map_str =''
+        cls_body_str = ''
+        cls_buildFun_str =''
+        bFirst = True
+        module_sysDomain_Perip_dict = dev.module_sysDomain_Perip_dict
+        # 这里需要调整，先根据CPUS 的systemDomain 
+        for proc in dev.cpus:
+            sysDomain = proc.systemDomain
+            cls_map_str += cst_tab_str + f'uvm_reg_map {sysDomain};\n'
+            cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{sysDomain} = create_map("{sysDomain}", 0, 4, UVM_LITTLE_ENDIAN, 0);\n'
+            if bFirst:
+                cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.default_map = this.{sysDomain};\n'
+                bFirst = False
+                pass
+            pass
+        # 然后再根据systemDomain 和 moduleName 来分别处理
+        for module in module_sysDomain_Perip_dict:
+            # cls_map_str += cst_tab_str + f'uvm_reg_map {sysDomain};\n'
+            sysDomain_Perip_dict = module_sysDomain_Perip_dict[module]
+            for sysDomain in sysDomain_Perip_dict:
+                perip_lst = sysDomain_Perip_dict[sysDomain]
+                if perip_lst:
+                    perip_count = len(perip_lst)
+                    perip = perip_lst[0]
+                    perip_m_name= module.upper()
+                    module_name= perip.moduleName  
+                    module_block_name = f'ral_block_{module_name}'
+                    if perip_count ==1:
+                        perip_inst_name = f'{sysDomain}_{perip_m_name}'
+                        p_name = perip.name.upper()
+                        cls_body_str += cst_tab_str + f'rand {module_block_name} {perip_inst_name};\n'
+                        cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{perip_inst_name} = {module_block_name}::type_id::create("{p_name}",,get_full_name());\n'
+                        cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{perip_inst_name}.configure(this, "{perip.instanceName}");\n'
+                        cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{perip_inst_name}.build();\n'
+                        
+                        peip_inst_addr = perip.getHexAddrStr()
+                        cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{sysDomain}.add_submap(this.{perip_inst_name}.default_map, `UVM_REG_ADDR_WIDTH\'h{peip_inst_addr});\n'
+                        pass
+                    else:
+                        perip_inst_name = f'{sysDomain}_{perip_m_name}'
+                        cls_body_str += cst_tab_str + f'rand {module_block_name} {perip_inst_name}[{perip_count}];\n'
+                        for index in range(perip_count):
+                            perip = perip_lst[index]
+                            p_name = perip.name.upper()
+                            p_inst_name = f'{perip_inst_name}[{index}]'
+                            cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{p_inst_name} = {module_block_name}::type_id::create("{p_name}",,get_full_name());\n'
+                            cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{p_inst_name}.configure(this, "{perip.instanceName}");\n'
+                            cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{p_inst_name}.build();\n'
+                            peip_inst_addr = perip.getHexAddrStr()
+                            cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{sysDomain}.add_submap(this.{p_inst_name}.default_map, `UVM_REG_ADDR_WIDTH\'h{peip_inst_addr});\n'
+                            pass
+                        pass
+                pass
+            pass
+        fileHeader += cls_map_str
+        fileHeader += cls_body_str
+        fileHeader += cst_tab_str + 'function new(string name = "soc");\n'
+        fileHeader += cst_tab_str + cst_tab_str + 'super.new(name);\n'
+        fileHeader += cst_tab_str + 'endfunction: new\n\n'
+        fileHeader += cst_tab_str + 'function void build();\n'
+        fileHeader += cls_buildFun_str
+        fileHeader += '\n' + cst_tab_str + cst_tab_str + 'uvm_config_db #(uvm_reg_block)::set(null,"","RegisterModel_Debug",this);\n'
+        fileHeader += cst_tab_str + 'endfunction : build\n\n'
+        fileHeader += cst_tab_str + '`uvm_object_utils(ral_sys_soc)\n'
+        fileHeader += 'endclass : ral_sys_soc\n\n'
+        fileHeader += '`endif\n'
+        out_file.write(fileHeader)
+
     pass    
 
 def getCluRegStructInfo_uvm_sv(clust_reg_lst:list, module_name:str,clu_name:str, nChild_level:int):
@@ -3832,6 +3963,7 @@ def dealwith_excel(xls_file:str, outFlag:int = 1):
     st_dev = None
     checkErr = False
     module_file_lst=[]
+    module_sysDomain_Perip_dict ={}
     for sh_name in sheetNames:
         # 遍历 sheet, preface sheet不处理, module_tpl sheet不处理
         if sh_name in ('preface', 'module_tpl'):
@@ -3845,16 +3977,32 @@ def dealwith_excel(xls_file:str, outFlag:int = 1):
             # 再逐一读取peripheral sheet
             ws = wb[sh_name]
             err, perip_lst,irq_set = checkModuleSheetValue(ws, sh_name)
+            
             if not err:
                 checkErr = True
             else:
                 if outFlag == 1:
                     mod_file =output_C_moduleFile(perip_lst, sh_name, st_dev.version)
                     module_file_lst.append(mod_file)
-                    output_ralf_moduleFile(perip_lst,sh_name,st_dev.version)
-                    output_uvm_sv_moduleFile(perip_lst,sh_name,st_dev.version)
-                    output_SequenceSv_moduleFile(perip_lst[0:3],sh_name,st_dev.version)
-                    output_C_FdValChk_moduleFile(perip_lst[0:3],sh_name)
+                perip_inst = perip_lst[0]
+                output_ralf_moduleFile(perip_inst,sh_name,st_dev.version)
+                output_uvm_sv_moduleFile(perip_inst,sh_name,st_dev.version)
+                sysDomain_PeripList = {}
+                for p in perip_lst:
+                    p_sysDomain = p.systemDomain
+                    if p_sysDomain in sysDomain_PeripList:
+                        sys_perip_list = sysDomain_PeripList[p_sysDomain]
+                        sys_perip_list.append(p)
+                        sysDomain_PeripList[p_sysDomain] = sys_perip_list
+                        pass
+                    else:
+                        sys_perip_list = []
+                        sys_perip_list.append(p)
+                        sysDomain_PeripList[p_sysDomain] = sys_perip_list
+                        pass
+                module_sysDomain_Perip_dict[sh_name] = sysDomain_PeripList
+                output_SequenceSv_moduleFile(sysDomain_PeripList,sh_name,st_dev.version)
+                output_C_FdValChk_moduleFile(sysDomain_PeripList,sh_name)
                 st_dev.peripherals[sh_name] = perip_lst
                 if irq_set and isinstance(irq_set,set):
                     st_dev.interrupts.update(irq_set)
@@ -3868,6 +4016,7 @@ def dealwith_excel(xls_file:str, outFlag:int = 1):
     else:
         with open('./dev.json', 'w+') as f: 
             f.write(st_dev.toJson())
+        st_dev.module_sysDomain_Perip_dict = module_sysDomain_Perip_dict
         out_sys_uvm_sv(st_dev)
         if outFlag == 2:
             #c代码全部输出到一个文件
@@ -3882,5 +4031,5 @@ def dealwith_excel(xls_file:str, outFlag:int = 1):
 if __name__ == '__main__':
     # 全路径是为方便在vscode中进行调试
     # file_name = 'D:/workspace/demopy/excel_flow/excel/ahb_cfg_20230925.xlsx'
-    file_name = './xy2_mp32daptyxx_DDF 240117.xlsx'
+    file_name = './xy2_mp32daptyxx_DDF 240118.xlsx'
     dealwith_excel(file_name)

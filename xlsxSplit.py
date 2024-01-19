@@ -33,7 +33,7 @@ def dealwith_excel(xls_file:str):
 
 if __name__ == '__main__':
     # 全路径是为方便在vscode中进行调试
-    file_name = './xy2_mp32daptyxx_DDF 231208.xlsx'
+    file_name = './xy2_mp32daptyxx_DDF 240118.xlsx'
     if len(sys.argv) == 2:
         file_name= sys.argv[1] 
     dealwith_excel(file_name)

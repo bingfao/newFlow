@@ -1,0 +1,669 @@
+ # @file    uart.ralf
+ # @author  CIP Application Team
+ # @brief   UART Register struct Header File.
+ #          This file contains:
+ #           - Data structures and the address mapping for
+ #             UART peripherals
+ #           - Including peripheral's registers declarations and bits
+ #             definition
+ # @version 0.1 
+ # @date    24-01-19
+ # <h2><center>&copy; Copyright (c)2024 CIP United Co.
+
+ # All rights reserved.</center></h2>
+ #
+
+block DW_apb_uart {
+    bytes 4;
+    register RBR @0 {
+        bytes  4;
+        field RBR  (U_DW_apb_uart_regfile.rbr[7:0])  @0 {
+            bits 8;
+            reset 0x00;
+            access ro;
+            constraint c_st_RBR_RBR {
+            };
+        };  #Receive data buffer
+    }; # Receive Buffer Register
+    register DLL @0 {
+        bytes  4;
+        field DLL  (U_DW_apb_uart_regfile.dll[7:0])  @0 {
+            bits 8;
+            reset 0x00;
+            access rw;
+            constraint c_st_DLL_DLL {
+                value inside { ['h00:'hFF] };
+            };
+        }; 
+    }; # Divisor Latch Low(DLL) Register
+    register THR @0 {
+        bytes  4;
+        field THR  @0 {
+            bits 8;
+            reset 0x00;
+            access wo;
+            constraint c_st_THR_THR {
+                value inside { ['h00:'hFF] };
+            };
+        }; 
+    }; # Transmit Holding Register
+    register IER @4 {
+        bytes  4;
+        field ERBFI  @0 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_IER_ERBFI {
+            };
+        };  #Enable Received Data Available Interrupt
+        field ETBEI  @1 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_IER_ETBEI {
+            };
+        };  #Enable Transmit Holding Register Empty Interrupt
+        field ELSI  @2 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_IER_ELSI {
+            };
+        };  #Enable Receiver Line Status Interrupt
+        field EMSI  (U_DW_apb_uart_regfile.ier_ir[3:0])  @3 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_IER_EMSI {
+            };
+        };  #Enable Modem Status Interrupt
+        field PTIME  (U_DW_apb_uart_regfile.ier_ir[7])  @7 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_IER_PTIME {
+            };
+        };  #Programmable THRE Interrupt Mode Enable
+    }; # Interrupt Enable Register
+    register DLH @4 {
+        bytes  4;
+        field DLH  (U_DW_apb_uart_regfile.dlh[7:0])  @0 {
+            bits 8;
+            reset 0x00;
+            access rw;
+            constraint c_st_DLH_DLH {
+                value inside { ['h00:'hFF] };
+            };
+        }; 
+    }; # Divisor Latch High (DLH) Register
+    register IIR @8 {
+        bytes  4;
+        field IID  (U_DW_apb_uart_regfile.iir[3:0])  @0 {
+            bits 4;
+            reset 0x1;
+            access ro;
+            constraint c_st_IIR_IID {
+            };
+        };  #Interrupt ID
+        field FIFOE  (U_DW_apb_uart_regfile.iir[7:6])  @6 {
+            bits 2;
+            reset 0x0;
+            access ro;
+            constraint c_st_IIR_FIFOE {
+            };
+        };  #FIFO enabled status
+    }; # Interrupt Identification Register
+    register FCR @8 {
+        bytes  4;
+        field FIFOE  @0 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_FCR_FIFOE {
+            };
+        };  #FIFO Enable
+        field RFR  @1 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_FCR_RFR {
+            };
+        };  #Receive FIFO reset
+        field TFR  @2 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_FCR_TFR {
+            };
+        };  #Transmit FIFO reset
+        field DMAM  @3 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_FCR_DMAM {
+            };
+        };  #DMA Mode
+        field TET  @4 {
+            bits 2;
+            reset 0x0;
+            access wo;
+            constraint c_st_FCR_TET {
+            };
+        };  #select the TX empty trigger level
+        field RT  @6 {
+            bits 2;
+            reset 0x0;
+            access wo;
+            constraint c_st_FCR_RT {
+            };
+        };  #select the RX available trigger level
+    }; # FIFO control Register
+    register LCR @12 {
+        bytes  4;
+        field DLS  @0 {
+            bits 2;
+            reset 0x0;
+            access rw;
+            constraint c_st_LCR_DLS {
+            };
+        };  #Data Length Select
+        field STOP  @2 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_LCR_STOP {
+            };
+        };  #Number of stop bits
+        field PEN  @3 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_LCR_PEN {
+            };
+        };  #Parity Enable
+        field EPS  @4 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_LCR_EPS {
+            };
+        };  #Even Parity Select
+        field SP  @5 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_LCR_SP {
+            };
+        };  #Stick Parity
+        field BC  @6 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_LCR_BC {
+            };
+        };  #Break Control Bit
+        field DLAB  @7 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_LCR_DLAB {
+            };
+        };  #Divisor Latch Access Bit
+    }; # Line Control Register
+    register MCR @16 {
+        bytes  4;
+        field DTR  @0 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_MCR_DTR {
+            };
+        };  #Data Terminal Ready
+        field RTS  @1 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_MCR_RTS {
+            };
+        };  #Request to Send
+        field OUT1  @2 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_MCR_OUT1 {
+            };
+        };  #OUT1 assert
+        field OUT2  @3 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_MCR_OUT2 {
+            };
+        };  #OUT2 assert
+        field LPBCK  @4 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_MCR_LPBCK {
+            };
+        };  #LoopBack Bit
+        field AFCE  @5 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_MCR_AFCE {
+            };
+        };  #Auto Flow Control Enable
+        field SIRE  @6 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_MCR_SIRE {
+            };
+        };  #SIR Mode Enable
+    }; # Modem Control Register
+    register LSR @20 {
+        bytes  4;
+        field DR  @0 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_LSR_DR {
+            };
+        };  #Data Ready bit.
+        field OE  @1 {
+            bits 1;
+            reset 0x0;
+            access rc;
+            constraint c_st_LSR_OE {
+            };
+        };  #Overrun error bit.
+        field PE  @2 {
+            bits 1;
+            reset 0x0;
+            access rc;
+            constraint c_st_LSR_PE {
+            };
+        };  #Parity Error bit.
+        field FE  @3 {
+            bits 1;
+            reset 0x0;
+            access rc;
+            constraint c_st_LSR_FE {
+            };
+        };  #Framing Error bit.
+        field BI  @4 {
+            bits 1;
+            reset 0x0;
+            access rc;
+            constraint c_st_LSR_BI {
+            };
+        };  #Break Interrupt bit.
+        field THRE  @5 {
+            bits 1;
+            reset 0x1;
+            access ro;
+            constraint c_st_LSR_THRE {
+            };
+        };  #Transmit Holding Register Empty bit.
+        field TEMT  @6 {
+            bits 1;
+            reset 0x1;
+            access ro;
+            constraint c_st_LSR_TEMT {
+            };
+        };  #Transmitter Empty bit.
+        field RFE  @7 {
+            bits 1;
+            reset 0x0;
+            access rc;
+            constraint c_st_LSR_RFE {
+            };
+        };  #Receiver FIFO Error bit.
+        field ADDR  @8 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_LSR_ADDR {
+            };
+        };  #Address Received Bit.
+    }; # Line Status Register
+    register MSR @24 {
+        bytes  4;
+        field DCTS  @0 {
+            bits 1;
+            reset 0x0;
+            access rc;
+            constraint c_st_MSR_DCTS {
+            };
+        };  #Delta Clear to Send
+        field DDSR  @1 {
+            bits 1;
+            reset 0x0;
+            access rc;
+            constraint c_st_MSR_DDSR {
+            };
+        };  #Delta Data Set Ready
+        field TERI  @2 {
+            bits 1;
+            reset 0x0;
+            access rc;
+            constraint c_st_MSR_TERI {
+            };
+        };  #Trailing Edge of Ring Indicator
+        field DDCD  @3 {
+            bits 1;
+            reset 0x0;
+            access rc;
+            constraint c_st_MSR_DDCD {
+            };
+        };  #Delta Data Carrier Detect
+        field CTS  @4 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_MSR_CTS {
+            };
+        };  #Clear to Send.
+        field DSR  @5 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_MSR_DSR {
+            };
+        };  #Data Set Ready.
+        field RI  @6 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_MSR_RI {
+            };
+        };  #Ring Indicator.
+        field DCD  @7 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_MSR_DCD {
+            };
+        };  #Data Carrier Detect
+    }; # Modem Status Register
+    register SCR @28 {
+        bytes  4;
+        field SCR  @0 {
+            bits 8;
+            reset 0x00;
+            access rw;
+            constraint c_st_SCR_SCR {
+                value inside { ['h00:'hFF] };
+            };
+        };  #temporary storage space.
+    }; # Scratchpad Register
+    register SRBR[8] @48 {
+        bytes  4;
+        field SRBR  @0 {
+            bits 8;
+            reset 0x00;
+            access ro;
+            constraint c_st_SRBR_SRBR {
+                value inside { ['h00:'hFF] };
+            };
+        };  #Shadow receive buffer register
+    }; # Shadow Receive Buffer Register
+    register STHR[8] @48 {
+        bytes  4;
+        field STHR  @0 {
+            bits 8;
+            reset 0x00;
+            access wo;
+            constraint c_st_STHR_STHR {
+                value inside { ['h00:'hFF] };
+            };
+        };  #Shadow transmit holding register
+    }; 
+    register FAR @112 {
+        bytes  4;
+        field FAR  @0 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_FAR_FAR {
+            };
+        };  #FIFO access mode enable bit
+    }; # FIFO access register
+    register TFR @116 {
+        bytes  4;
+        field TFR  @0 {
+            bits 8;
+            reset 0x00;
+            access ro;
+            constraint c_st_TFR_TFR {
+                value inside { ['h00:'hFF] };
+            };
+        }; 
+    }; # Transmit FIFO read register
+    register RFW @120 {
+        bytes  4;
+        field RFWD  @0 {
+            bits 8;
+            reset 0x00;
+            access wo;
+            constraint c_st_RFW_RFWD {
+                value inside { ['h00:'hFF] };
+            };
+        };  #Receive FIFO Write Data
+        field RFPE  @8 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_RFW_RFPE {
+            };
+        };  #Receive FIFO Parity Error
+        field RFFE  @9 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_RFW_RFFE {
+            };
+        };  #Receive FIFO Framing Error
+    }; # Receive FIFO Write
+    register USR @124 {
+        bytes  4;
+        field TFNF  @1 {
+            bits 1;
+            reset 0x1;
+            access ro;
+            constraint c_st_USR_TFNF {
+            };
+        };  #Transmit FIFO Not Full
+        field TFE  @2 {
+            bits 1;
+            reset 0x1;
+            access ro;
+            constraint c_st_USR_TFE {
+            };
+        };  #Transmit FIFO Empty
+        field RFNE  @3 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_USR_RFNE {
+            };
+        };  #Receive FIFO Not Empty
+        field RFF  @4 {
+            bits 1;
+            reset 0x0;
+            access ro;
+            constraint c_st_USR_RFF {
+            };
+        };  #Receive FIFO Full
+    }; # UART status register
+    register TFL @128 {
+        bytes  4;
+        field TFL  @0 {
+            bits 6;
+            reset 0x00;
+            access ro;
+            constraint c_st_TFL_TFL {
+                value inside { ['h00:'h1F] };
+            };
+        };  #The number of data entries in the transmit FIFO
+    }; # Transmit FIFO Level register
+    register RFL @132 {
+        bytes  4;
+        field RFL  @0 {
+            bits 6;
+            reset 0x00;
+            access ro;
+            constraint c_st_RFL_RFL {
+                value inside { ['h00:'h1F] };
+            };
+        }; 
+    }; # Receive FIFO level register
+    regfile SHADOW @140 {
+        register SRR @-4 {
+            bytes  4;
+            field UR  @0 {
+                bits 1;
+                reset 0x0;
+                access wo;
+                constraint c_st_SRR_UR {
+                };
+            };  #Uart reset
+            field RFR  @1 {
+                bits 1;
+                reset 0x0;
+                access wo;
+                constraint c_st_SRR_RFR {
+                };
+            };  #RCVR FIFO Reset
+            field XFR  @2 {
+                bits 1;
+                reset 0x0;
+                access wo;
+                constraint c_st_SRR_XFR {
+                };
+            };  #XMIT FIFO Reset
+        }; # Software reset register
+        register SRTS @0 {
+            bytes  4;
+            field SRTS  @0 {
+                bits 1;
+                reset 0x0;
+                access rw;
+                constraint c_st_SRTS_SRTS {
+                };
+            };  #Shadow request to send bit
+        }; # Shadow request to send  register
+        register SBCR @4 {
+            bytes  4;
+            field SBCB  @0 {
+                bits 1;
+                reset 0x0;
+                access rw;
+                constraint c_st_SBCR_SBCB {
+                };
+            };  #Shadow Break Control Bit.
+        }; # Shadow rreak control register
+        register SDMAM @8 {
+            bytes  4;
+            field SDMAM  @0 {
+                bits 1;
+                reset 0x0;
+                access rw;
+                constraint c_st_SDMAM_SDMAM {
+                };
+            };  #Shadow DMA Mode
+        }; # Shadow DMA mode register
+        register SFE @12 {
+            bytes  4;
+            field SFE  @0 {
+                bits 1;
+                reset 0x0;
+                access rw;
+                constraint c_st_SFE_SFE {
+                };
+            };  #Shadow FIFO Enable
+        }; # Shadow FIFO enable register
+        register SRT @16 {
+            bytes  4;
+            field SRT  @0 {
+                bits 2;
+                reset 0x0;
+                access rw;
+                constraint c_st_SRT_SRT {
+                };
+            };  #Shadow RCVR trigger bit
+        }; # Shadow RCVR trigger register
+        register STET @20 {
+            bytes  4;
+            field STET  @0 {
+                bits 2;
+                reset 0x0;
+                access rw;
+                constraint c_st_STET_STET {
+                };
+            };  #Shadow TX Empty Trigger bit
+        }; # Shadow TX empty trigger register
+    } ;
+    register HTX @164 {
+        bytes  4;
+        field HTX  @0 {
+            bits 1;
+            reset 0x0;
+            access rw;
+            constraint c_st_HTX_HTX {
+            };
+        };  #Halt TX.
+    }; # Halt TX
+    register DMASA @168 {
+        bytes  4;
+        field DMASA  @0 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_DMASA_DMASA {
+            };
+        };  #DMA Software Acknowledge
+    }; # DMA software acknowledge register
+    register DLF @192 {
+        bytes  4;
+        field DLF  @0 {
+            bits 4;
+            reset 0x0;
+            access rw;
+            constraint c_st_DLF_DLF {
+                value inside { ['h0:'h3] };
+            };
+        };  #Fractional part of divisor
+    }; # Divisor Latch Fraction Register
+    register CPR @244 {
+        bytes  4;
+        field CPR  @0 {
+            bits 32;
+            reset 0x00042F32;
+            access ro;
+            constraint c_st_CPR_CPR {
+            };
+        }; 
+    }; # Component Parameter Register
+    register UCV @248 {
+        bytes  4;
+        field UCV  @0 {
+            bits 32;
+            reset 0x3430322A;
+            access ro;
+            constraint c_st_UCV_UCV {
+            };
+        }; 
+    }; # UART Component Version
+    register CTR @252 {
+        bytes  4;
+        field CTR  @0 {
+            bits 32;
+            reset 0x44570110;
+            access ro;
+            constraint c_st_CTR_CTR {
+            };
+        }; 
+    }; # Component Type Register
+} ; 
