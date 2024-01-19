@@ -33,8 +33,11 @@ bitWidMask_arr = ('0x01', '0x03', '0x07', '0x0F', '0x1F', '0x3F', '0x7F', '0xFF'
                   '0x01FFFFFF', '0x03FFFFFF', '0x07FFFFFF', '0x0FFFFFFF', '0x1FFFFFFF', '0x3FFFFFFF', '0x7FFFFFFF', '0xFFFFFFFF', '0x01FFFFFF', '0x03FFFFFFFF', '0x07FFFFFFFF', '0x0FFFFFFFFF', '0x1FFFFFFFFF', '0x3FFFFFFFFF', '0x7FFFFFFFFF', '0xFFFFFFFFFF',
                   '0x01FFFFFFFF', '0x03FFFFFFFF', '0x07FFFFFFFF', '0x0FFFFFFFFF', '0x1FFFFFFFFF', '0x3FFFFFFFFF', '0x7FFFFFFFFF', '0xFFFFFFFFFF', '0x01FFFFFFFF', '0x03FFFFFFFFFF', '0x07FFFFFFFFFF', '0x0FFFFFFFFFFF', '0x1FFFFFFFFFFF', '0x3FFFFFFFFFFF', '0x7FFFFFFFFFFF', '0xFFFFFFFFFFFF')
 
-fieldRWOp_arr = ('rw', 'ro', 'wo', 'w1', 'w1c', 'rc', 'rs', 'wrc', 'wrs', 'wc', 'ws', 'wsrc', 'wcrs', 'w1s', 'w1t', 'w0c',
-                 'w0s', 'w0t', 'w1src', 'w1crs', 'w0src', 'w0crs', 'woc', 'wos', 'wo1')
+# fieldRWOp_arr = ('ro', 'rw', 'wo', 'w1', 'w1c', 'rc', 'rs', 'wrc', 'wrs', 'wc', 'ws', 'wsrc', 'wcrs', 'w1s', 'w1t', 'w0c',
+#                  'w0s', 'w0t', 'w1src', 'w1crs', 'w0src', 'w0crs', 'woc', 'wos', 'wo1')
+
+fieldRWOp_arrUpper = ('RO', 'RW', 'RC', 'RS', 'WRC', 'WRS', 'WC', 'WS', 'WSRC', 'WCRS', 'W1C', 'W1S', 'W1T', 'W0C', 'W0S', 'W0T',
+                 'W1SRC', 'W1CRS', 'W0SRC', 'W0CRS', 'WO', 'WOC', 'WOS', 'W1', 'WO1')
 
 cst_tab_str='    '  #用来替代\t的格式化用字符
 
@@ -664,8 +667,8 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
             if bEmpty:
                 emptyA_rows.append(row)
         row += 1
-    if flag_dict:
-        print(flag_dict)
+    # if flag_dict:
+    #     print(flag_dict)
     # flag_rows.sort()
     row = 3
     row_end = nRows
@@ -945,7 +948,7 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
                     clu_range_list.append(clu_range)
 
             for clu_range in clu_range_list:
-                print(clu_range.get_inst_str())
+                # print(clu_range.get_inst_str())
                 if clu_range.parentClustRow == 0:
                     st_clu_reg_list, row, bError = readCluster(ws,sheetName, st_clu_reg_list, clu_range, clu_range_list)
                     if bError:
@@ -1107,7 +1110,7 @@ def readRegister(ws:worksheet,sheetName:str, row_end:int, row_start:int, parent_
                             if f.name == cur_reg_fd.name:
                                 bSameFieldAsPrev = True
                             else:
-                                print(f'In Register Field Name not allow repeat at Row {row}')
+                                print(f'Error In excel_file Sheet:{sheetName} Register Field Name not allow repeat at Row {row}')
                                 bError = True
                             break
                 if not bSameFieldAsPrev:
@@ -1120,6 +1123,10 @@ def readRegister(ws:worksheet,sheetName:str, row_end:int, row_start:int, parent_
                     nEnd_bit = int(end_bit)
                     bitWidth = nEnd_bit - nStart_bit+1
                     access = ws.cell(row, regFd_col_dict['access']).value
+                    if access not in fieldRWOp_arrUpper:
+                        print(f'Error In excel_file Sheet:{sheetName} Register Field access value [{access}] not allowed at Row {row}')
+                        bError = True
+                        pass
                     defaultVal = ws.cell(row, regFd_col_dict['defaultValue']).value
                     writeConstraint = ws.cell(row, regFd_col_dict['writeConstraint']).value
                     range_min = ws.cell(row, regFd_col_dict['minimum']).value
@@ -1154,12 +1161,20 @@ def readRegister(ws:worksheet,sheetName:str, row_end:int, row_start:int, parent_
                     if cur_st_reg.fields:
                         fd_len=len(cur_st_reg.fields)
                         for i in range(fd_len):
-                            if cur_st_reg.fields[i].bitOffset > fd.bitOffset:
+                            reg_fd  =  cur_st_reg.fields[i]
+                            if reg_fd.bitOffset > fd.bitOffset:
                                 cur_st_reg.fields.insert(i,fd)
                                 if fd.name != 'RESERVED':
                                     cur_st_reg.nValidFdCount += 1
                                 binsertFd = True
                                 break
+                            elif reg_fd.bitOffset == fd.bitOffset:
+                                print(f'Error In excel_file Sheet:{sheetName} Register Field  bitRange overlap other field at Row {row}')
+                                bError = True
+                                pass
+                            elif reg_fd.bitOffset + reg_fd.bitWidth > fd.bitOffset :
+                                print(f'Error In excel_file Sheet:{sheetName} Register Field  bitRange overlap other field at Row {row}')
+                                bError = True
                     if not binsertFd:
                         cur_st_reg.fields.append(fd)
                         if fd.name != 'RESERVED':
@@ -1174,7 +1189,7 @@ def readRegister(ws:worksheet,sheetName:str, row_end:int, row_start:int, parent_
                         #nBitMask = int(bitMask[2:],16)
                         nBitMask = int(bitMask,16)
                         if nEnumVal >  nBitMask:
-                            print(f'Error: In Register Field enum value extends the bitRange at  Row {row}')
+                            print(f'Error In excel_file Sheet:{sheetName} Register Field enum value extends the bitRange at  Row {row}')
                             bError = True
                             pass
                     enumDesc = ws.cell(row, regFd_col_dict['enumDescription']).value
@@ -2437,8 +2452,8 @@ def getModule_Reg_FdChkStr_impl(reg:St_Register,reg_Name_use:str,str_Tab:str,mod
         fd_var = reg_fd_var
         if bRegLoop :
             fd_var = fd_var.replace('[ri]','[%u]')
-        if fd_var != reg_fd_var:
-            print(f'fd_var:{fd_var},reg_fd_var:{reg_fd_var}')
+        # if fd_var != reg_fd_var:
+        #     print(f'fd_var:{fd_var},reg_fd_var:{reg_fd_var}')
         module_fd_var = f'{modinst_var}->{reg_fd_var}'
         nBitWid = fd.bitWidth
         fdAccess = fd.access.upper()
@@ -2974,7 +2989,7 @@ def out_sys_uvm_sv(dev: St_Device):
         devName = dev.name.upper()
         fileHeader += f'`ifndef {devName}_SOC\n`define {devName}_SOC\n\n'
         for p_name in dev.peripherals:
-            fileHeader += f'`include "{p_name}.sv"\n'
+            fileHeader += f'`include "{p_name.lower()}.sv"\n'
 
         fileHeader += '\nimport uvm_pkg::*;\n\n'
         fileHeader += 'class ral_sys_soc extends uvm_reg_block;\n'
@@ -3213,7 +3228,7 @@ def getRegFieldInfo_C(tab_str:str, clu_reg: St_Register ,moduleName:str,nRegRese
     sizeinfo = f'size:  {math.floor(clu_reg.size/8)}'
     if clu_reg.dim:
         sizeinfo += f', dim: {clu_reg.dim} * {clu_reg.dimIncrement}'
-    print(f'reg: {clu_reg.name}, reg_offset: {reg_offset}, {sizeinfo} , LastOffset: {nLastOffset},tab_str:{len(tab_str)}')
+    # print(f'reg: {clu_reg.name}, reg_offset: {reg_offset}, {sizeinfo} , LastOffset: {nLastOffset},tab_str:{len(tab_str)}')
     if reg_offset > nLastOffset:
         nNeedReserved = reg_offset - nLastOffset
         if nNeedReserved >1:
@@ -3824,7 +3839,7 @@ def checkDeviceSheet(ws:worksheet):
                 val = ws.cell(row_cpu_header,col_i).value
                 if val:
                     cpu_col_dict[val] = col_i
-            print(cpu_col_dict)
+            # print(cpu_col_dict)
             # print(cpu_col_dict)
             for row_i in range(cpu_row_pos+2, end_row_pos):
                 cpu_name = ws.cell(row_i, cpu_col_dict['name']).value

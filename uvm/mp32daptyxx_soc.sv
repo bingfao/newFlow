@@ -22,8 +22,8 @@
 `ifndef MP32DAPTYXX_SOC
 `define MP32DAPTYXX_SOC
 
-`include "CRU.sv"
-`include "UART.sv"
+`include "cru.sv"
+`include "uart.sv"
 
 import uvm_pkg::*;
 

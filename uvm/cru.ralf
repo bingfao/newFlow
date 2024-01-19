@@ -986,7 +986,7 @@ block CRU {
         field SSCRST  @0 {
             bits 16;
             reset 0x0000;
-            access rwrtg;
+            access rw;
             constraint c_st_SSCRSTR_SSCRST {
             };
         };  #Software system cold reset, write AA55H, subsequently read to triggle reset, reading only return 0
@@ -996,7 +996,7 @@ block CRU {
         field SSWRST  @0 {
             bits 16;
             reset 0x0000;
-            access rwrtg;
+            access rw;
             constraint c_st_SSWRSTR_SSWRST {
             };
         };  #Software system warm reset, write AA55H, subsequently read to triggle reset, reading only return 0
@@ -1006,7 +1006,7 @@ block CRU {
         field D1SRST  @0 {
             bits 16;
             reset 0x0000;
-            access rwrtg;
+            access rw;
             constraint c_st_D1RSTR_D1SRST {
             };
         };  #Domain1 software reset, write AA55H, subsequently read to triggle reset, reading only return 0
@@ -1016,7 +1016,7 @@ block CRU {
         field D2SRST  @0 {
             bits 16;
             reset 0x0000;
-            access rwrtg;
+            access rw;
             constraint c_st_D2RSTR_D2SRST {
             };
         };  #Domain2 software reset, write AA55H, subsequently read to triggle reset, reading only return 0
@@ -1026,7 +1026,7 @@ block CRU {
         field C1RST  @0 {
             bits 16;
             reset 0x0000;
-            access rwrtg;
+            access rw;
             constraint c_st_C1RSTR_C1RST {
             };
         };  #CPU1 and bus cold reset, write AA55H, subsequently read to triggle reset, reading only return 0
@@ -1036,7 +1036,7 @@ block CRU {
         field C2RST  @0 {
             bits 16;
             reset 0x0000;
-            access rwrtg;
+            access rw;
             constraint c_st_C2RSTR_C2RST {
             };
         };  #CPU2 and bus cold reset, write AA55H, subsequently read to triggle reset, reading only return 0
@@ -1046,98 +1046,98 @@ block CRU {
         field C1RSTF  @0 {
             bits 1;
             reset 0x0;
-            access rw1c;
+            access rw;
             constraint c_st_SRSR_C1RSTF {
             };
         };  #CPU1 reset flag, Clear by software by writing 1
         field C2RSTF  @1 {
             bits 1;
             reset 0x1;
-            access rw1c;
+            access rw;
             constraint c_st_SRSR_C2RSTF {
             };
         };  #CPU2 reset flag, Clear by software by writing 1
         field D1PORRSTF  @2 {
             bits 1;
             reset 0x0;
-            access rw1c;
+            access rw;
             constraint c_st_SRSR_D1PORRSTF {
             };
         };  #D1 domain power reset flag, Clear by software by writing 1
-        field D2PORRSTF  @2 {
+        field D2PORRSTF  @3 {
             bits 1;
             reset 0x1;
-            access rw1c;
+            access rw;
             constraint c_st_SRSR_D2PORRSTF {
             };
         };  #D2 domain power reset flag, Clear by software by writing 1
-        field BORRSTF  @3 {
+        field BORRSTF  @4 {
             bits 1;
             reset 0x0;
-            access rw1c;
+            access rw;
             constraint c_st_SRSR_BORRSTF {
             };
         };  #BOR reset flag, Clear by software by writing 1
-        field PINRSTF  @4 {
+        field PINRSTF  @5 {
             bits 1;
             reset 0x1;
-            access rw1c;
+            access rw;
             constraint c_st_SRSR_PINRSTF {
             };
         };  #Pin reset flag, Clear by software by writing 1
-        field PORRSTF  @5 {
+        field PORRSTF  @6 {
             bits 1;
             reset 0x1;
-            access rw1c;
+            access rw;
             constraint c_st_SRSR_PORRSTF {
             };
         };  #POR/PDR reset flag, Clear by software by writing 1
-        field SSCRSTF  @6 {
+        field SSCRSTF  @7 {
             bits 1;
             reset 0x0;
-            access rw1c;
+            access rw;
             constraint c_st_SRSR_SSCRSTF {
             };
         };  #Software system reset flag, Clear by software by writing 1
-        field SSWRSTF  @7 {
+        field SSWRSTF  @8 {
             bits 1;
             reset 0x0;
-            access rw1c;
+            access rw;
             constraint c_st_SRSR_SSWRSTF {
             };
         };  #Software system warm reset flag, Clear by software by writing 1
-        field D1SRSTF  @8 {
+        field D1SRSTF  @9 {
             bits 1;
             reset 0x0;
-            access rw1c;
+            access rw;
             constraint c_st_SRSR_D1SRSTF {
             };
         };  #D1 domain software reset flag, Clear by software by writing 1
-        field C1RSTF_1  @10 {
+        field C1RSTF_1  @11 {
             bits 1;
             reset 0x0;
-            access rw1c;
+            access rw;
             constraint c_st_SRSR_C1RSTF_1 {
             };
         };  #CPU1 software reset flag, Clear by software by writing 1
-        field C2RSTF_1  @11 {
+        field C2RSTF_1  @12 {
             bits 1;
             reset 0x0;
-            access rw1c;
+            access rw;
             constraint c_st_SRSR_C2RSTF_1 {
             };
         };  #CPU2 software reset flag, Clear by software by writing 1
-        field WDG0RSTF  @12 {
+        field WDG0RSTF  @13 {
             bits 1;
             reset 0x0;
-            access rw1c;
+            access rw;
             constraint c_st_SRSR_WDG0RSTF {
             };
         };  #Watchdog0 reset flag
-        field WDG1RSTF  @13 {
+        field WDG1RSTF  @14 {
             bits 1;
             reset 0x0;
-            access rw1c;
+            access rw;
             constraint c_st_SRSR_WDG1RSTF {
             };
         };  #Watchdog1 reset flag
@@ -1251,13 +1251,6 @@ block CRU {
             constraint c_st_D1PPCCR_UART1ENT {
             };
         };  #UART1 clock enable
-        field UART1EN  @9 {
-            bits 1;
-            reset 0x0;
-            access rw;
-            constraint c_st_D1PPCCR_UART1EN {
-            };
-        }; 
         field UART2EN  @10 {
             bits 1;
             reset 0x0;
@@ -1317,7 +1310,7 @@ block CRU {
             constraint c_st_D2PPCCR_PDMEN {
             };
         };  #PDM clock enable
-        field VADEN  @24 {
+        field VADEN  @23 {
             bits 1;
             reset 0x0;
             access rw;

@@ -999,7 +999,7 @@ class ral_reg_CRU_SSCRSTR extends uvm_reg;
     endfunction: new
     virtual function void build();
         this.SSCRST = uvm_reg_field::type_id::create("SSCRST",,get_full_name());
-        this.SSCRST.configure(this, 16, 0, "RWRTG", 0, 16'h0000, 1, 1, 1);
+        this.SSCRST.configure(this, 16, 0, "RW", 0, 16'h0000, 1, 1, 1);
     endfunction: build
 
     `uvm_object_utils(ral_reg_CRU_SSCRSTR)
@@ -1015,7 +1015,7 @@ class ral_reg_CRU_SSWRSTR extends uvm_reg;
     endfunction: new
     virtual function void build();
         this.SSWRST = uvm_reg_field::type_id::create("SSWRST",,get_full_name());
-        this.SSWRST.configure(this, 16, 0, "RWRTG", 0, 16'h0000, 1, 1, 1);
+        this.SSWRST.configure(this, 16, 0, "RW", 0, 16'h0000, 1, 1, 1);
     endfunction: build
 
     `uvm_object_utils(ral_reg_CRU_SSWRSTR)
@@ -1031,7 +1031,7 @@ class ral_reg_CRU_D1RSTR extends uvm_reg;
     endfunction: new
     virtual function void build();
         this.D1SRST = uvm_reg_field::type_id::create("D1SRST",,get_full_name());
-        this.D1SRST.configure(this, 16, 0, "RWRTG", 0, 16'h0000, 1, 1, 1);
+        this.D1SRST.configure(this, 16, 0, "RW", 0, 16'h0000, 1, 1, 1);
     endfunction: build
 
     `uvm_object_utils(ral_reg_CRU_D1RSTR)
@@ -1047,7 +1047,7 @@ class ral_reg_CRU_D2RSTR extends uvm_reg;
     endfunction: new
     virtual function void build();
         this.D2SRST = uvm_reg_field::type_id::create("D2SRST",,get_full_name());
-        this.D2SRST.configure(this, 16, 0, "RWRTG", 0, 16'h0000, 1, 1, 1);
+        this.D2SRST.configure(this, 16, 0, "RW", 0, 16'h0000, 1, 1, 1);
     endfunction: build
 
     `uvm_object_utils(ral_reg_CRU_D2RSTR)
@@ -1063,7 +1063,7 @@ class ral_reg_CRU_C1RSTR extends uvm_reg;
     endfunction: new
     virtual function void build();
         this.C1RST = uvm_reg_field::type_id::create("C1RST",,get_full_name());
-        this.C1RST.configure(this, 16, 0, "RWRTG", 0, 16'h0000, 1, 1, 1);
+        this.C1RST.configure(this, 16, 0, "RW", 0, 16'h0000, 1, 1, 1);
     endfunction: build
 
     `uvm_object_utils(ral_reg_CRU_C1RSTR)
@@ -1079,7 +1079,7 @@ class ral_reg_CRU_C2RSTR extends uvm_reg;
     endfunction: new
     virtual function void build();
         this.C2RST = uvm_reg_field::type_id::create("C2RST",,get_full_name());
-        this.C2RST.configure(this, 16, 0, "RWRTG", 0, 16'h0000, 1, 1, 1);
+        this.C2RST.configure(this, 16, 0, "RW", 0, 16'h0000, 1, 1, 1);
     endfunction: build
 
     `uvm_object_utils(ral_reg_CRU_C2RSTR)
@@ -1134,33 +1134,33 @@ class ral_reg_CRU_SRSR extends uvm_reg;
     endfunction: new
     virtual function void build();
         this.C1RSTF = uvm_reg_field::type_id::create("C1RSTF",,get_full_name());
-        this.C1RSTF.configure(this, 1, 0, "RW1C", 0, 1'h0, 1, 1, 0);
+        this.C1RSTF.configure(this, 1, 0, "RW", 0, 1'h0, 1, 1, 0);
         this.C2RSTF = uvm_reg_field::type_id::create("C2RSTF",,get_full_name());
-        this.C2RSTF.configure(this, 1, 1, "RW1C", 0, 1'h1, 1, 1, 0);
+        this.C2RSTF.configure(this, 1, 1, "RW", 0, 1'h1, 1, 1, 0);
         this.D1PORRSTF = uvm_reg_field::type_id::create("D1PORRSTF",,get_full_name());
-        this.D1PORRSTF.configure(this, 1, 2, "RW1C", 0, 1'h0, 1, 1, 0);
+        this.D1PORRSTF.configure(this, 1, 2, "RW", 0, 1'h0, 1, 1, 0);
         this.D2PORRSTF = uvm_reg_field::type_id::create("D2PORRSTF",,get_full_name());
-        this.D2PORRSTF.configure(this, 1, 2, "RW1C", 0, 1'h1, 1, 1, 0);
+        this.D2PORRSTF.configure(this, 1, 3, "RW", 0, 1'h1, 1, 1, 0);
         this.BORRSTF = uvm_reg_field::type_id::create("BORRSTF",,get_full_name());
-        this.BORRSTF.configure(this, 1, 3, "RW1C", 0, 1'h0, 1, 1, 0);
+        this.BORRSTF.configure(this, 1, 4, "RW", 0, 1'h0, 1, 1, 0);
         this.PINRSTF = uvm_reg_field::type_id::create("PINRSTF",,get_full_name());
-        this.PINRSTF.configure(this, 1, 4, "RW1C", 0, 1'h1, 1, 1, 0);
+        this.PINRSTF.configure(this, 1, 5, "RW", 0, 1'h1, 1, 1, 0);
         this.PORRSTF = uvm_reg_field::type_id::create("PORRSTF",,get_full_name());
-        this.PORRSTF.configure(this, 1, 5, "RW1C", 0, 1'h1, 1, 1, 0);
+        this.PORRSTF.configure(this, 1, 6, "RW", 0, 1'h1, 1, 1, 0);
         this.SSCRSTF = uvm_reg_field::type_id::create("SSCRSTF",,get_full_name());
-        this.SSCRSTF.configure(this, 1, 6, "RW1C", 0, 1'h0, 1, 1, 0);
+        this.SSCRSTF.configure(this, 1, 7, "RW", 0, 1'h0, 1, 1, 0);
         this.SSWRSTF = uvm_reg_field::type_id::create("SSWRSTF",,get_full_name());
-        this.SSWRSTF.configure(this, 1, 7, "RW1C", 0, 1'h0, 1, 1, 0);
+        this.SSWRSTF.configure(this, 1, 8, "RW", 0, 1'h0, 1, 1, 0);
         this.D1SRSTF = uvm_reg_field::type_id::create("D1SRSTF",,get_full_name());
-        this.D1SRSTF.configure(this, 1, 8, "RW1C", 0, 1'h0, 1, 1, 0);
+        this.D1SRSTF.configure(this, 1, 9, "RW", 0, 1'h0, 1, 1, 0);
         this.C1RSTF_1 = uvm_reg_field::type_id::create("C1RSTF_1",,get_full_name());
-        this.C1RSTF_1.configure(this, 1, 10, "RW1C", 0, 1'h0, 1, 1, 0);
+        this.C1RSTF_1.configure(this, 1, 11, "RW", 0, 1'h0, 1, 1, 0);
         this.C2RSTF_1 = uvm_reg_field::type_id::create("C2RSTF_1",,get_full_name());
-        this.C2RSTF_1.configure(this, 1, 11, "RW1C", 0, 1'h0, 1, 1, 0);
+        this.C2RSTF_1.configure(this, 1, 12, "RW", 0, 1'h0, 1, 1, 0);
         this.WDG0RSTF = uvm_reg_field::type_id::create("WDG0RSTF",,get_full_name());
-        this.WDG0RSTF.configure(this, 1, 12, "RW1C", 0, 1'h0, 1, 1, 0);
+        this.WDG0RSTF.configure(this, 1, 13, "RW", 0, 1'h0, 1, 1, 0);
         this.WDG1RSTF = uvm_reg_field::type_id::create("WDG1RSTF",,get_full_name());
-        this.WDG1RSTF.configure(this, 1, 13, "RW1C", 0, 1'h0, 1, 1, 0);
+        this.WDG1RSTF.configure(this, 1, 14, "RW", 0, 1'h0, 1, 1, 0);
     endfunction: build
 
     `uvm_object_utils(ral_reg_CRU_SRSR)
@@ -1259,7 +1259,6 @@ class ral_reg_CRU_D1PPCCR extends uvm_reg;
     rand uvm_reg_field I2C0EN;
     rand uvm_reg_field I2C1EN;
     rand uvm_reg_field UART1ENT;
-    rand uvm_reg_field UART1EN;
     rand uvm_reg_field UART2EN;
     rand uvm_reg_field SPI0EN;
     rand uvm_reg_field SPI1EN;
@@ -1269,8 +1268,6 @@ class ral_reg_CRU_D1PPCCR extends uvm_reg;
     constraint D1PPCCR_cst_I2C1EN {
     }
     constraint D1PPCCR_cst_UART1ENT {
-    }
-    constraint D1PPCCR_cst_UART1EN {
     }
     constraint D1PPCCR_cst_UART2EN {
     }
@@ -1290,8 +1287,6 @@ class ral_reg_CRU_D1PPCCR extends uvm_reg;
         this.I2C1EN.configure(this, 1, 1, "RW", 0, 1'h0, 1, 1, 0);
         this.UART1ENT = uvm_reg_field::type_id::create("UART1ENT",,get_full_name());
         this.UART1ENT.configure(this, 1, 9, "RW", 0, 1'h0, 1, 1, 0);
-        this.UART1EN = uvm_reg_field::type_id::create("UART1EN",,get_full_name());
-        this.UART1EN.configure(this, 1, 9, "RW", 0, 1'h0, 1, 1, 0);
         this.UART2EN = uvm_reg_field::type_id::create("UART2EN",,get_full_name());
         this.UART2EN.configure(this, 1, 10, "RW", 0, 1'h0, 1, 1, 0);
         this.SPI0EN = uvm_reg_field::type_id::create("SPI0EN",,get_full_name());
@@ -1350,7 +1345,7 @@ class ral_reg_CRU_D2PPCCR extends uvm_reg;
         this.PDMEN = uvm_reg_field::type_id::create("PDMEN",,get_full_name());
         this.PDMEN.configure(this, 1, 20, "RW", 0, 1'h0, 1, 1, 0);
         this.VADEN = uvm_reg_field::type_id::create("VADEN",,get_full_name());
-        this.VADEN.configure(this, 1, 24, "RW", 0, 1'h0, 1, 1, 0);
+        this.VADEN.configure(this, 1, 23, "RW", 0, 1'h0, 1, 1, 0);
         this.VADENT = uvm_reg_field::type_id::create("VADENT",,get_full_name());
         this.VADENT.configure(this, 1, 24, "RW", 0, 1'h0, 1, 1, 0);
         this.ADCEN = uvm_reg_field::type_id::create("ADCEN",,get_full_name());
