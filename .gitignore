@@ -9,3 +9,8 @@
 *.json
 /module_check
 uvm/ral_soc_bak.sv
+test.asm
+test.log
+test.lst
+test.s
+__pycache__/xlsFlowX.cpython-312.pyc

@@ -34,17 +34,18 @@ def dealwith_excel(xls_file:str):
 # fieldRWOp_arrUpper = ('RO', 'RW', 'RC', 'RS', 'WRC', 'WRS', 'WC', 'WS', 'WSRC', 'WCRS', 'W1C', 'W1S', 'W1T', 'W0C', 'W0S', 'W0T',
 #                  'W1SRC', 'W1CRS', 'W0SRC', 'W0CRS', 'WO', 'WOC', 'WOS', 'W1', 'WO1')
     
+   
 def printAllValues(strlst: list):
-    # strop =''
-    # bFirst = True
-    # for op in strlst:
-    #     if not bFirst:
-    #         strop += ','
-    #     else:
-    #         bFirst = False
-    #     strop += op
-    # print(strop)
-    pass
+    strop =''
+    bFirst = True
+    for op in strlst:
+        if not bFirst:
+            strop += ','
+        else:
+            bFirst = False
+        strop += op
+    print(strop)
+
 
 
 if __name__ == '__main__':

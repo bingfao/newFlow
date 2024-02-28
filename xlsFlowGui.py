@@ -12,8 +12,6 @@ def sftp_upload_file(host, port, user, password, out_file_list, timeout=10):
     :param host: 主机名
     :param user: 用户名
     :param password: 密码
-    :param server_path: 远程路径，比如：/home/sdn/tmp.txt
-    :param local_path: 本地路径, 比如: D:/text.txt
     :param timeout: 超时时间(默认), 必须是int类型
     :return: bool
     """
@@ -22,16 +20,18 @@ def sftp_upload_file(host, port, user, password, out_file_list, timeout=10):
         t.banner_timeout = timeout
         t.connect(username=user, password=password)
         sftp = paramiko.SFTPClient.from_transport(t)
-        print("当前工作目录 : %s" % os.getcwd())
+        # print("当前工作目录 : %s" % os.getcwd())
         # svr_path = './'
         for out_f in out_file_list:
             out_file_name = os.path.abspath(out_f)
             svr_file_path = os.path.normpath(out_f)
-            print(svr_file_path)
+            # print(svr_file_path)
             svr_file_path = svr_file_path.replace('\\', '__')
-            print(svr_file_path)
+            svr_file_= './updata/'+svr_file_path
             # print(out_file_name)
-            sftp.put(out_file_name, svr_file_path)
+            if sftp:
+                sftp.put(out_file_name, svr_file_)
+                print('upload: '+svr_file_)
         t.close()
         return True
     except Exception as e:

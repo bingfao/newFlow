@@ -39,6 +39,8 @@ bitWidMask_arr = ('0x01', '0x03', '0x07', '0x0F', '0x1F', '0x3F', '0x7F', '0xFF'
 fieldRWOp_arrUpper = ('RO', 'RW', 'RC', 'RS', 'WRC', 'WRS', 'WC', 'WS', 'WSRC', 'WCRS', 'W1C', 'W1S', 'W1T', 'W0C', 'W0S', 'W0T',
                  'W1SRC', 'W1CRS', 'W0SRC', 'W0CRS', 'WO', 'WOC', 'WOS', 'W1', 'WO1')
 
+fd_access_not_Readable = ('WO', 'WOC', 'WOS', 'W1', 'WO1')
+
 cst_tab_str='    '  #用来替代\t的格式化用字符
 
 accessDict = {'R': '__I ', 'W': '__O ', 'RW': '__IO'}
@@ -399,6 +401,17 @@ class St_Peripheral:
             offset_int = getIntValFromHexString(self.addressOffset)
             addr_int += offset_int
             pass
+        addr_str = getHexStr(addr_int)
+        return addr_str
+    
+    def getHexAddrStr_SV(self):
+        addr_str = self.baseAddress
+        addr_int = getIntValFromHexString(addr_str)
+        if self.addressOffset:
+            offset_int = getIntValFromHexString(self.addressOffset)
+            addr_int += offset_int
+            pass
+        addr_int = addr_int & 0x1FFFFFFF
         addr_str = getHexStr(addr_int)
         return addr_str
     
@@ -2457,7 +2470,9 @@ def getModule_Reg_FdChkStr_impl(reg:St_Register,reg_Name_use:str,str_Tab:str,mod
         module_fd_var = f'{modinst_var}->{reg_fd_var}'
         nBitWid = fd.bitWidth
         fdAccess = fd.access.upper()
-        if fdAccess.find('R') != -1:
+
+        # if fdAccess.find('R') != -1:   #这里可能需要修改
+        if fdAccess not in fd_access_not_Readable:
             filed_resetChk_str += f'{str_Tab}nRegFdVal = {module_fd_var};\n'
             filed_resetChk_str += f'{str_Tab}if(nRegFdVal != {fd.defaultValue})\n'
             filed_resetChk_str += str_Tab + '{\n'
@@ -3022,13 +3037,13 @@ def out_sys_uvm_sv(dev: St_Device):
                     module_block_name = f'ral_block_{module_name}'
                     if perip_count ==1:
                         perip_inst_name = f'{sysDomain}_{perip_m_name}'
-                        p_name = perip.name.upper()
+                        p_name = sysDomain+'_' + perip.name.upper()
                         cls_body_str += cst_tab_str + f'rand {module_block_name} {perip_inst_name};\n'
                         cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{perip_inst_name} = {module_block_name}::type_id::create("{p_name}",,get_full_name());\n'
                         cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{perip_inst_name}.configure(this, "{perip.instanceName}");\n'
                         cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{perip_inst_name}.build();\n'
                         
-                        peip_inst_addr = perip.getHexAddrStr()
+                        peip_inst_addr = perip.getHexAddrStr_SV()
                         cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{sysDomain}.add_submap(this.{perip_inst_name}.default_map, `UVM_REG_ADDR_WIDTH\'h{peip_inst_addr});\n'
                         pass
                     else:
@@ -3036,12 +3051,12 @@ def out_sys_uvm_sv(dev: St_Device):
                         cls_body_str += cst_tab_str + f'rand {module_block_name} {perip_inst_name}[{perip_count}];\n'
                         for index in range(perip_count):
                             perip = perip_lst[index]
-                            p_name = perip.name.upper()
+                            p_name = sysDomain+'_' + perip.name.upper()
                             p_inst_name = f'{perip_inst_name}[{index}]'
                             cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{p_inst_name} = {module_block_name}::type_id::create("{p_name}",,get_full_name());\n'
                             cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{p_inst_name}.configure(this, "{perip.instanceName}");\n'
                             cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{p_inst_name}.build();\n'
-                            peip_inst_addr = perip.getHexAddrStr()
+                            peip_inst_addr = perip.getHexAddrStr_SV()
                             cls_buildFun_str += cst_tab_str + cst_tab_str + f'this.{sysDomain}.add_submap(this.{p_inst_name}.default_map, `UVM_REG_ADDR_WIDTH\'h{peip_inst_addr});\n'
                             pass
                         pass
