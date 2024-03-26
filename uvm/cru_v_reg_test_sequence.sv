@@ -3,7 +3,7 @@
  * @author  CIP Application Team
  # @brief   cru sequence UVM test .
  # @version 0.1 
- # @date    24-01-19
+ # @date    24-03-21
 
  *
  ******************************************************************************

@@ -8,9 +8,5 @@
 *.exe
 *.json
 /module_check
-uvm/ral_soc_bak.sv
-test.asm
-test.log
-test.lst
-test.s
+test.*
 __pycache__/xlsFlowX.cpython-312.pyc

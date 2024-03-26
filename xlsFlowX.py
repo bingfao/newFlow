@@ -115,7 +115,7 @@ class St_CPU:
 
     def toJson(self):
         json_str = '{\n'+f'"name": "{self.name}","revision": "{self.revision}","derivedFrom": "{self.derivedFrom}","endian": "{self.endian}","srsPresent": {getBoolStr(self.srsPresent)},"mpuPresent": {getBoolStr(self.mpuPresent)},"fpuPresent": {getBoolStr(self.fpuPresent)}'
-        json_str += f',"dspPresent": {getBoolStr(self.dspPresent)},"icachePresent": {getBoolStr(self.icachePresent)},"dcachePresent": {getBoolStr(self.dcachePresent)},"mmu": {getBoolStr(self.mmu)},"itcmPresent": {getBoolStr(self.itcmPresent)},"dtcmPresent": {getBoolStr(self.dtcmPresent)},"l2cachePresent": {getBoolStr(self.l2cachePresent)}' + '\n}'
+        json_str += f',"dspPresent": {getBoolStr(self.dspPresent)},"icachePresent": {getBoolStr(self.icachePresent)},"dcachePresent": {getBoolStr(self.dcachePresent)},"mmu": {getBoolStr(self.mmu)},"itcmPresent": {getBoolStr(self.itcmPresent)},"dtcmPresent": {getBoolStr(self.dtcmPresent)},"l2cachePresent": {getBoolStr(self.l2cachePresent)},"powerDomain": "{self.powerDomain}","systemDomain": "{self.systemDomain}"' + '\n}'
         return json_str
 
 class St_Interrupt:
@@ -187,6 +187,8 @@ class St_Field:
         self.bitWidth = 1
         self.access = 'RW'
         self.defaultValue = ''
+        self.enumName = ''
+        self.enumHeaderName = ''
         self.enumValues = []
         self.writeConstraint = ''  # enum or range
         self.range_min = None
@@ -206,8 +208,16 @@ class St_Field:
     def toJson(self) -> str:
         json_str = '{\n' f'"name": "{self.name}","description": "{self.description}","bitOffset": {self.bitOffset}, "bitWidth": {self.bitWidth},"access": "{self.access}","defaultValue": "{self.defaultValue}"'
         json_str += f',"writeConstraint": "{self.writeConstraint}","hdl_path": "{self.hdl_path}"'
-        if self.writeConstraint == 'enumerated':
+        if self.writeConstraint == 'useEnumerated':
             if self.enumValues:
+                json_str += ', "enumeration": {\n'
+                json_str += '"enumName":"'
+                if self.enumName:
+                    json_str += self.enumName
+                json_str += '",\n"headerEnumName":"'
+                if self.enumHeaderName:
+                    json_str += self.enumHeaderName
+                json_str += '"\n'
                 json_str += ',"enumValues": [\n'
                 bFirstEnum = True
                 for e in self.enumValues:
@@ -218,6 +228,7 @@ class St_Field:
                     bFirstEnum = False
                     pass
                 json_str += '\n]'
+                json_str += '\n}'
                 pass
             pass
         elif self.writeConstraint == 'range':
@@ -431,7 +442,7 @@ class St_Peripheral:
     def toJson(self):
         json_str = '{\n' f'"name": "{self.name}","derivedFrom": "{self.derivedFrom}","alternatePeripheral": "{self.alternatePeripheral}","prefixToName": "{self.prefixToName}","suffixToName": "{self.suffixToName}"'
         json_str += f',"moduleName": "{self.moduleName}","instanceName": "{self.instanceName}","description": "{self.description}","busInterface": "{self.busInterface}","headerStructName": "{self.headerStructName}"'
-        json_str += f',"baseAddress": "{self.baseAddress}","addrDerivedFrom": "{self.memoryMap}","addressOffset": "{self.addressOffset}"'
+        json_str += f',"baseAddress": "{self.baseAddress}","addrDerivedFrom": "{self.memoryMap}","addressOffset": "{self.addressOffset}","systemDomain":"{self.systemDomain}","powerDomain":"{self.powerDomain}"'
         if self.addressBlocks:
             json_str += ',"addressBlocks": [\n'
             bNotFirst = False
@@ -885,6 +896,11 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
                 if row not in emptyA_rows:
                     name = ws.cell(row, itq_col_dict['name']).value
                     val = ws.cell(row, itq_col_dict['number']).value
+                    if not isinstance(val,int):
+                        print(f'interrupts number must be number at row: {row}')
+                        markCell_InvalidFunc2(ws, row, itq_col_dict['number'])
+                        bMod_CheckErr = True
+                        pass
                     desc = ws.cell(row, itq_col_dict['description']).value
                     st_inter = St_Interrupt(name)
                     st_inter.value = val
@@ -1132,6 +1148,10 @@ def readRegister(ws:worksheet,sheetName:str, row_end:int, row_start:int, parent_
                     end, op, start = bitrange.partition(':')
                     start_bit = start[0:-1]
                     end_bit = end[1:]
+                    if end_bit < start_bit:
+                        print(f'Error In excel_file Sheet:{sheetName} Register Field bitRange value,Should be [EndBit:StartBit] and EndBit must > StartBit at Row {row}')
+                        bError = True
+                        pass
                     offset = nStart_bit = int(start_bit)
                     nEnd_bit = int(end_bit)
                     bitWidth = nEnd_bit - nStart_bit+1
@@ -1193,7 +1213,14 @@ def readRegister(ws:worksheet,sheetName:str, row_end:int, row_start:int, parent_
                         if fd.name != 'RESERVED':
                             cur_st_reg.nValidFdCount += 1
                 else:
-                    enumName = ws.cell(row, regFd_col_dict['enumName']).value
+                    enumNm = ws.cell(row, regFd_col_dict['enumName']).value
+                    enmuHeaderNm = ws.cell(row, regFd_col_dict['headerEnumName']).value
+                    if isinstance(enumNm,str):
+                        cur_reg_fd.enumName = enumNm
+                    # 可以在这里做了逻辑判断，自动为enumName 设置好
+                    if isinstance(enmuHeaderNm,str):
+                        cur_reg_fd.enumHeaderName = enmuHeaderNm
+                    enumName = ws.cell(row, regFd_col_dict['enumValueName']).value
                     enumVal = ws.cell(row, regFd_col_dict['enumValue']).value
                     if isHexString(enumVal):
                         #nEnumVal = int(enumVal[2:],16)
@@ -2804,7 +2831,7 @@ def getRegFieldInfo_uvm_sv(clu_reg: St_Register,moduleName:str,cluster_level: in
                     constraint_str = ''
                     enum_str =''
                     enum_val_str =''
-                    if fd.writeConstraint == 'enumerated':
+                    if fd.writeConstraint == 'useEnumerated':
                         if fd.enumValues:
                             enum_str += field_tab_str  + 'enum {\n'
                             bFirstEnum = True
@@ -2926,7 +2953,7 @@ def getRegFieldInfo_Ralf(tab_str:str, clu_reg: St_Register,baseOffset:int):
                     constraint_str = ''
                     enum_str =''
                     enum_val_str =''
-                    if fd.writeConstraint == 'enumerated':
+                    if fd.writeConstraint == 'useEnumerated':
                         if fd.enumValues:
                             enum_str += field_tab_str  + 'enum {\n'
                             bFirstEnum = True
@@ -4061,5 +4088,6 @@ def dealwith_excel(xls_file:str, outFlag:int = 1):
 if __name__ == '__main__':
     # 全路径是为方便在vscode中进行调试
     # file_name = 'D:/workspace/demopy/excel_flow/excel/ahb_cfg_20230925.xlsx'
-    file_name = './xy2_mp32daptyxx_DDF 240118.xlsx'
+    # file_name = './xy2_mp32daptyxx_DDF 240118.xlsx'
+    file_name = './H1_mp32daptyxx_DDF 240321.xlsx'
     dealwith_excel(file_name)

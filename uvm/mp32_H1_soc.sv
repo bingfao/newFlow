@@ -1,9 +1,9 @@
 /**
- * @file    mp32daptyxx_soc.sv
+ * @file    mp32_H1_soc.sv
  * @author  CIP Application Team
- # @brief   mp32daptyxx soc struct  File.
+ # @brief   mp32_H1 soc struct  File.
  # @version 0.1 
- # @date    24-03-21
+ # @date    24-03-22
 
  *
  ******************************************************************************
@@ -19,8 +19,8 @@
 
 */
 
-`ifndef MP32DAPTYXX_SOC
-`define MP32DAPTYXX_SOC
+`ifndef MP32_H1_SOC
+`define MP32_H1_SOC
 
 `include "wdt.sv"
 

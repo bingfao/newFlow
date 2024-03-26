@@ -1,0 +1,130 @@
+ # @file    wdt.ralf
+ # @author  CIP Application Team
+ # @brief   WDT Register struct Header File.
+ #          This file contains:
+ #           - Data structures and the address mapping for
+ #             WDT peripherals
+ #           - Including peripheral's registers declarations and bits
+ #             definition
+ # @version 0.1 
+ # @date    24-03-22
+ # <h2><center>&copy; Copyright (c)2024 CIP United Co.
+
+ # All rights reserved.</center></h2>
+ #
+
+block  {
+    bytes 4;
+    register CTRL @0 {
+        bytes  4;
+        field WDTEN  @0 {
+            bits 1;
+            reset 0x00;
+            access rw;
+            constraint c_st_CTRL_WDTEN {
+            };
+        };  #force enable bit of WDT counter
+        field VBUSEN  @1 {
+            bits 1;
+            reset 0x000000;
+            access rw;
+            constraint c_st_CTRL_VBUSEN {
+            };
+        };  #enable control for trigger of ¡°vbus_plug_intr¡± 
+        field ONKEYEN  @2 {
+            bits 1;
+            reset 0x000000;
+            access rw;
+            constraint c_st_CTRL_ONKEYEN {
+            };
+        };  #enable control for trigger of ¡°onkey_intr¡± 
+        field RESEN  @3 {
+            bits 1;
+            reset 0x000000;
+            access rw;
+            constraint c_st_CTRL_RESEN {
+            };
+        };  #enable control for reset generation ¡°iwdt_rst¡±
+        field IMK  @4 {
+            bits 1;
+            reset 0x000000;
+            access rw;
+            constraint c_st_CTRL_IMK {
+            };
+        };  #Interrupt mask bit for iwdt_ovflow
+    }; # Control register
+    register INTR_LOAD @4 {
+        bytes  4;
+        field INC  @0 {
+            bits 32;
+            reset 0x0;
+            access rw;
+            constraint c_st_INTR_LOAD_INC {
+            };
+        };  #Preloaded value for intr counter, when intr counter count down to 32¡¯h0, WDT reset will be generated
+    }; # INTR counter Register
+    register MAIN_LOAD @8 {
+        bytes  4;
+        field MAC  @0 {
+            bits 32;
+            reset 0x0;
+            access rw;
+            constraint c_st_MAIN_LOAD_MAC {
+            };
+        };  #Preloaded value for main counter, when main counter count down to 32¡¯h0, WDT interrupt (overflow) will be generated
+    }; # MAIN counter Register
+    register COUNTER @12 {
+        bytes  4;
+        field CINC  @0 {
+            bits 32;
+            reset 0x0;
+            access rw;
+            constraint c_st_COUNTER_CINC {
+            };
+        };  # Current value of main counter, main counter is used for overflow interrupt generation
+    }; # Current value INTR counter Register
+    register INTRCTER @16 {
+        bytes  4;
+        field DTR  @0 {
+            bits 32;
+            reset 0x0;
+            access rw;
+            constraint c_st_INTRCTER_DTR {
+            };
+        };  #Current value of intr counter, which begins since overflow interrupt generated
+    }; # Current value MAIN counter Register
+    register WSTROBE @20 {
+        bytes  4;
+        field RE INTR  @0 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_WSTROBE_RE INTR {
+            };
+        };  #Reload the intr counter
+        field RE MAIN  @1 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_WSTROBE_RE MAIN {
+            };
+        };  #Reload the main counter
+        field CLR INT  @2 {
+            bits 1;
+            reset 0x0;
+            access wo;
+            constraint c_st_WSTROBE_CLR INT {
+            };
+        };  #Interrupt clear flag
+    }; # Parameter config register
+    register IWDT_OVFLOW @24 {
+        bytes  4;
+        field INF  @0 {
+            bits 32;
+            reset 0x0;
+            access ro;
+            constraint c_st_IWDT_OVFLOW_INF {
+            };
+        };  #Overflow interrupt status
+    }; # Interrupt Flag Register
+} ; 

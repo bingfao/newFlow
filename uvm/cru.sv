@@ -8,7 +8,7 @@
  #           - Including peripheral's registers declarations and bits
  *             definition
  # @version 0.1 
- # @date    24-01-19
+ # @date    24-03-21
 
  *
  ******************************************************************************
@@ -34,8 +34,10 @@ class ral_reg_CRU_CCR extends uvm_reg;
     uvm_reg_field XTALON;
     uvm_reg_field XTALRDY;
     constraint CCR_cst_XTALON {
+        XTALON.value == 'h1;
     }
     constraint CCR_cst_XTALRDY {
+        XTALRDY.value == 'h1;
     }
     function new(string name = "CRU_CCR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -58,10 +60,12 @@ class ral_reg_CRU_SCCR extends uvm_reg;
     rand uvm_reg_field SCPRE;
     rand uvm_reg_field SCPWE;
     constraint SCCR_cst_CSW {
+        CSW.value inside {'h1,'h2,'h3,'h4,'h5,'h6,'h7};
     }
     constraint SCCR_cst_CSWE {
     }
     constraint SCCR_cst_CSWS {
+        CSWS.value inside {'h1,'h2,'h3,'h4,'h5,'h6,'h7};
     }
     constraint SCCR_cst_SCPRE {
         SCPRE.value inside { ['h00:'h1F] };
@@ -96,14 +100,17 @@ class ral_reg_CRU_D1BCCR extends uvm_reg;
     rand uvm_reg_field D1BCPRE;
     rand uvm_reg_field D1BCPWE;
     constraint D1BCCR_cst_PCK1PRE {
+        PCK1PRE.value inside {'h1,'h2,'h3};
     }
     constraint D1BCCR_cst_PCK1PWE {
     }
     constraint D1BCCR_cst_PCK2PRE {
+        PCK2PRE.value inside {'h1,'h2,'h3};
     }
     constraint D1BCCR_cst_PCK2PWE {
     }
     constraint D1BCCR_cst_D1BCPRE {
+        D1BCPRE.value inside {'h1,'h2,'h3};
     }
     constraint D1BCCR_cst_D1BCPWE {
     }
@@ -135,10 +142,12 @@ class ral_reg_CRU_D2BCCR extends uvm_reg;
     rand uvm_reg_field D2BCPRE;
     rand uvm_reg_field D2BCPWE;
     constraint D2BCCR_cst_PCK3PRE {
+        PCK3PRE.value inside {'h1,'h2,'h3};
     }
     constraint D2BCCR_cst_PCK3PWE {
     }
     constraint D2BCCR_cst_D2BCPRE {
+        D2BCPRE.value inside {'h1,'h2,'h3};
     }
     constraint D2BCCR_cst_D2BCPWE {
     }
@@ -172,16 +181,21 @@ class ral_reg_CRU_PLLMCR extends uvm_reg;
     rand uvm_reg_field PSDIV1;
     rand uvm_reg_field PSDIV2;
     constraint PLLMCR_cst_PLLMON {
+        PLLMON.value == 'h0;
     }
     constraint PLLMCR_cst_PLLMRDY {
     }
     constraint PLLMCR_cst_PLLBYP {
+        PLLBYP.value == 'h0;
     }
     constraint PLLMCR_cst_PLLMD {
+        PLLMD.value == 'h0;
     }
     constraint PLLMCR_cst_PLLPSTPD {
+        PLLPSTPD.value == 'h0;
     }
     constraint PLLMCR_cst_PLLFO4PD {
+        PLLFO4PD.value == 'h0;
     }
     constraint PLLMCR_cst_RFDIV {
         RFDIV.value inside { ['h1:'h3F] };
@@ -246,6 +260,7 @@ class ral_reg_CRU_D1HFCCR extends uvm_reg;
     rand uvm_reg_field QSPI1PRE;
     rand uvm_reg_field U1PHYPRE;
     constraint D1HFCCR_cst_QSPI1PRE {
+        QSPI1PRE.value inside {'h1,'h2,'h3};
     }
     constraint D1HFCCR_cst_U1PHYPRE {
         U1PHYPRE.value inside { ['h2:'hF] };
@@ -268,8 +283,10 @@ class ral_reg_CRU_D1HFCSR extends uvm_reg;
     rand uvm_reg_field QSPI1CS;
     rand uvm_reg_field U1PHYCS;
     constraint D1HFCSR_cst_QSPI1CS {
+        QSPI1CS.value == 'h1;
     }
     constraint D1HFCSR_cst_U1PHYCS {
+        U1PHYCS.value inside {'h1,'h2,'h3};
     }
     function new(string name = "CRU_D1HFCSR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -289,6 +306,7 @@ class ral_reg_CRU_D2HFCCR extends uvm_reg;
     rand uvm_reg_field QSPI0PRE;
     rand uvm_reg_field U0PHYPRE;
     constraint D2HFCCR_cst_QSPI0PRE {
+        QSPI0PRE.value inside {'h1,'h2,'h3};
     }
     constraint D2HFCCR_cst_U0PHYPRE {
         U0PHYPRE.value inside { ['h2:'hF] };
@@ -311,8 +329,10 @@ class ral_reg_CRU_D2HFCSR extends uvm_reg;
     rand uvm_reg_field QSPI0CS;
     rand uvm_reg_field U0PHYCS;
     constraint D2HFCSR_cst_QSPI0CS {
+        QSPI0CS.value == 'h1;
     }
     constraint D2HFCSR_cst_U0PHYCS {
+        U0PHYCS.value inside {'h1,'h2,'h3};
     }
     function new(string name = "CRU_D2HFCSR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -354,18 +374,25 @@ class ral_reg_CRU_D1PFCSR extends uvm_reg;
     rand uvm_reg_field SPI1CS;
     rand uvm_reg_field WDT1CS;
     constraint D1PFCSR_cst_I2C0CS {
+        I2C0CS.value inside {'h1,'h2};
     }
     constraint D1PFCSR_cst_I2C1CS {
+        I2C1CS.value inside {'h1,'h2};
     }
     constraint D1PFCSR_cst_UART1CS {
+        UART1CS.value inside {'h1,'h2,'h3};
     }
     constraint D1PFCSR_cst_UART2CS {
+        UART2CS.value inside {'h1,'h2,'h3};
     }
     constraint D1PFCSR_cst_SPI0CS {
+        SPI0CS.value inside {'h1,'h2};
     }
     constraint D1PFCSR_cst_SPI1CS {
+        SPI1CS.value inside {'h1,'h2};
     }
     constraint D1PFCSR_cst_WDT1CS {
+        WDT1CS.value inside {'h1,'h2};
     }
     function new(string name = "CRU_D1PFCSR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -440,16 +467,22 @@ class ral_reg_CRU_D2PFCSR extends uvm_reg;
     rand uvm_reg_field ADCCS;
     rand uvm_reg_field WDT0CS;
     constraint D2PFCSR_cst_UART0CS {
+        UART0CS.value inside {'h1,'h2,'h3};
     }
     constraint D2PFCSR_cst_I2S0CS {
+        I2S0CS.value inside {'h1,'h2};
     }
     constraint D2PFCSR_cst_I2S1CS {
+        I2S1CS.value inside {'h1,'h2};
     }
     constraint D2PFCSR_cst_PDMCS {
+        PDMCS.value inside {'h1,'h2};
     }
     constraint D2PFCSR_cst_ADCCS {
+        ADCCS.value inside {'h1,'h2};
     }
     constraint D2PFCSR_cst_WDT0CS {
+        WDT0CS.value inside {'h1,'h2};
     }
     function new(string name = "CRU_D2PFCSR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -482,14 +515,18 @@ class ral_reg_CRU_COCR extends uvm_reg;
     rand uvm_reg_field CO2DWE;
     rand uvm_reg_field RTCPRE;
     constraint COCR_cst_CO1S {
+        CO1S.value inside {'h1,'h2,'h3,'h4,'h5,'h6,'h7};
     }
     constraint COCR_cst_CO1DIV {
+        CO1DIV.value inside {'h1,'h2,'h3,'h4,'h5,'h6,'h7};
     }
     constraint COCR_cst_CO1DWE {
     }
     constraint COCR_cst_CO2S {
+        CO2S.value inside {'h1,'h2,'h3,'h4};
     }
     constraint COCR_cst_CO2DIV {
+        CO2DIV.value inside {'h1,'h2,'h3,'h4,'h5,'h6,'h7};
     }
     constraint COCR_cst_CO2DWE {
     }
@@ -560,14 +597,17 @@ class ral_reg_CRU_RTCCR extends uvm_reg;
     rand uvm_reg_field RTCEN;
     rand uvm_reg_field RTCCS;
     constraint RTCCR_cst_XTAL32ON {
+        XTAL32ON.value == 'h1;
     }
     constraint RTCCR_cst_XTAL32RDY {
     }
     constraint RTCCR_cst_XTAL32BYP {
     }
     constraint RTCCR_cst_RTCEN {
+        RTCEN.value == 'h1;
     }
     constraint RTCCR_cst_RTCCS {
+        RTCCS.value == 'h1;
     }
     function new(string name = "CRU_RTCCR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -592,6 +632,7 @@ endclass : ral_reg_CRU_RTCCR
 class ral_reg_CRU_XPRSTR extends uvm_reg;
     rand uvm_reg_field NPURST;
     constraint XPRSTR_cst_NPURST {
+        NPURST.value == 'h1;
     }
     function new(string name = "CRU_XPRSTR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -610,10 +651,13 @@ class ral_reg_CRU_H1PRSTR extends uvm_reg;
     rand uvm_reg_field QSPI1RST;
     rand uvm_reg_field USB1RST;
     constraint H1PRSTR_cst_DMA0RST {
+        DMA0RST.value == 'h1;
     }
     constraint H1PRSTR_cst_QSPI1RST {
+        QSPI1RST.value == 'h1;
     }
     constraint H1PRSTR_cst_USB1RST {
+        USB1RST.value == 'h1;
     }
     function new(string name = "CRU_H1PRSTR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -640,18 +684,25 @@ class ral_reg_CRU_H2PRSTR extends uvm_reg;
     rand uvm_reg_field SHARST;
     rand uvm_reg_field CRCRST;
     constraint H2PRSTR_cst_DMA2RST {
+        DMA2RST.value == 'h1;
     }
     constraint H2PRSTR_cst_QSPI0RST {
+        QSPI0RST.value == 'h1;
     }
     constraint H2PRSTR_cst_USB0RST {
+        USB0RST.value == 'h1;
     }
     constraint H2PRSTR_cst_AESRST {
+        AESRST.value == 'h1;
     }
     constraint H2PRSTR_cst_PKARST {
+        PKARST.value == 'h1;
     }
     constraint H2PRSTR_cst_SHARST {
+        SHARST.value == 'h1;
     }
     constraint H2PRSTR_cst_CRCRST {
+        CRCRST.value == 'h1;
     }
     function new(string name = "CRU_H2PRSTR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -686,18 +737,25 @@ class ral_reg_CRU_D1PRSTR extends uvm_reg;
     rand uvm_reg_field SPI1RST;
     rand uvm_reg_field WDT1RST;
     constraint D1PRSTR_cst_I2C0RST {
+        I2C0RST.value == 'h1;
     }
     constraint D1PRSTR_cst_I2C1RST {
+        I2C1RST.value == 'h1;
     }
     constraint D1PRSTR_cst_UART1RST {
+        UART1RST.value == 'h1;
     }
     constraint D1PRSTR_cst_UART2RST {
+        UART2RST.value == 'h1;
     }
     constraint D1PRSTR_cst_SPI0RST {
+        SPI0RST.value == 'h1;
     }
     constraint D1PRSTR_cst_SPI1RST {
+        SPI1RST.value == 'h1;
     }
     constraint D1PRSTR_cst_WDT1RST {
+        WDT1RST.value == 'h1;
     }
     function new(string name = "CRU_D1PRSTR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -734,22 +792,31 @@ class ral_reg_CRU_D2PRSTR extends uvm_reg;
     rand uvm_reg_field FFTRST;
     rand uvm_reg_field WDT0RST;
     constraint D2PRSTR_cst_UART0RST {
+        UART0RST.value == 'h1;
     }
     constraint D2PRSTR_cst_I2S0RST {
+        I2S0RST.value == 'h1;
     }
     constraint D2PRSTR_cst_I2S1RST {
+        I2S1RST.value == 'h1;
     }
     constraint D2PRSTR_cst_PDMRST {
+        PDMRST.value == 'h1;
     }
     constraint D2PRSTR_cst_VADRST {
+        VADRST.value == 'h1;
     }
     constraint D2PRSTR_cst_ADCRST {
+        ADCRST.value == 'h1;
     }
     constraint D2PRSTR_cst_GPIORST {
+        GPIORST.value == 'h1;
     }
     constraint D2PRSTR_cst_FFTRST {
+        FFTRST.value == 'h1;
     }
     constraint D2PRSTR_cst_WDT0RST {
+        WDT0RST.value == 'h1;
     }
     function new(string name = "CRU_D2PRSTR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -973,8 +1040,10 @@ class ral_reg_CRU_GRCR extends uvm_reg;
     rand uvm_reg_field WDG0RSC;
     rand uvm_reg_field WDG1RSC;
     constraint GRCR_cst_WDG0RSC {
+        WDG0RSC.value == 'h1;
     }
     constraint GRCR_cst_WDG1RSC {
+        WDG1RSC.value == 'h1;
     }
     function new(string name = "CRU_GRCR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -1120,6 +1189,7 @@ class ral_reg_CRU_SRSR extends uvm_reg;
     constraint SRSR_cst_SSWRSTF {
     }
     constraint SRSR_cst_D1SRSTF {
+        D1SRSTF.value == 'h1;
     }
     constraint SRSR_cst_C1RSTF_1 {
     }
@@ -1170,6 +1240,7 @@ endclass : ral_reg_CRU_SRSR
 class ral_reg_CRU_D1XPCCR extends uvm_reg;
     rand uvm_reg_field NPUEN;
     constraint D1XPCCR_cst_NPUEN {
+        NPUEN.value == 'h1;
     }
     function new(string name = "CRU_D1XPCCR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -1188,10 +1259,13 @@ class ral_reg_CRU_D1HPCCR extends uvm_reg;
     rand uvm_reg_field QSPI1EN;
     rand uvm_reg_field USB1EN;
     constraint D1HPCCR_cst_DMA0EN {
+        DMA0EN.value == 'h1;
     }
     constraint D1HPCCR_cst_QSPI1EN {
+        QSPI1EN.value == 'h1;
     }
     constraint D1HPCCR_cst_USB1EN {
+        USB1EN.value == 'h1;
     }
     function new(string name = "CRU_D1HPCCR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -1218,18 +1292,25 @@ class ral_reg_CRU_D2HPCCR extends uvm_reg;
     rand uvm_reg_field SHAEN;
     rand uvm_reg_field CRCEN;
     constraint D2HPCCR_cst_DMA2EN {
+        DMA2EN.value == 'h1;
     }
     constraint D2HPCCR_cst_QSPI0EN {
+        QSPI0EN.value == 'h1;
     }
     constraint D2HPCCR_cst_USB0EN {
+        USB0EN.value == 'h1;
     }
     constraint D2HPCCR_cst_AESEN {
+        AESEN.value == 'h1;
     }
     constraint D2HPCCR_cst_PKAEN {
+        PKAEN.value == 'h1;
     }
     constraint D2HPCCR_cst_SHAEN {
+        SHAEN.value == 'h1;
     }
     constraint D2HPCCR_cst_CRCEN {
+        CRCEN.value == 'h1;
     }
     function new(string name = "CRU_D2HPCCR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -1264,18 +1345,25 @@ class ral_reg_CRU_D1PPCCR extends uvm_reg;
     rand uvm_reg_field SPI1EN;
     rand uvm_reg_field WDT1EN;
     constraint D1PPCCR_cst_I2C0EN {
+        I2C0EN.value == 'h1;
     }
     constraint D1PPCCR_cst_I2C1EN {
+        I2C1EN.value == 'h1;
     }
     constraint D1PPCCR_cst_UART1ENT {
+        UART1ENT.value == 'h1;
     }
     constraint D1PPCCR_cst_UART2EN {
+        UART2EN.value == 'h1;
     }
     constraint D1PPCCR_cst_SPI0EN {
+        SPI0EN.value == 'h1;
     }
     constraint D1PPCCR_cst_SPI1EN {
+        SPI1EN.value == 'h1;
     }
     constraint D1PPCCR_cst_WDT1EN {
+        WDT1EN.value == 'h1;
     }
     function new(string name = "CRU_D1PPCCR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -1313,24 +1401,32 @@ class ral_reg_CRU_D2PPCCR extends uvm_reg;
     rand uvm_reg_field FFTEN;
     rand uvm_reg_field WDT0EN;
     constraint D2PPCCR_cst_UART0EN {
+        UART0EN.value == 'h1;
     }
     constraint D2PPCCR_cst_I2S0EN {
+        I2S0EN.value == 'h1;
     }
     constraint D2PPCCR_cst_I2S1EN {
+        I2S1EN.value == 'h1;
     }
     constraint D2PPCCR_cst_PDMEN {
+        PDMEN.value == 'h1;
     }
     constraint D2PPCCR_cst_VADEN {
     }
     constraint D2PPCCR_cst_VADENT {
     }
     constraint D2PPCCR_cst_ADCEN {
+        ADCEN.value == 'h1;
     }
     constraint D2PPCCR_cst_GPIOEN {
+        GPIOEN.value == 'h1;
     }
     constraint D2PPCCR_cst_FFTEN {
+        FFTEN.value == 'h1;
     }
     constraint D2PPCCR_cst_WDT0EN {
+        WDT0EN.value == 'h1;
     }
     function new(string name = "CRU_D2PPCCR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));

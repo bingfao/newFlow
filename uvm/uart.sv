@@ -8,7 +8,7 @@
  #           - Including peripheral's registers declarations and bits
  *             definition
  # @version 0.1 
- # @date    24-01-19
+ # @date    24-03-21
 
  *
  ******************************************************************************
@@ -87,14 +87,19 @@ class ral_reg_DW_apb_uart_IER extends uvm_reg;
     rand uvm_reg_field EMSI;
     rand uvm_reg_field PTIME;
     constraint IER_cst_ERBFI {
+        ERBFI.value == 'h1;
     }
     constraint IER_cst_ETBEI {
+        ETBEI.value == 'h1;
     }
     constraint IER_cst_ELSI {
+        ELSI.value == 'h1;
     }
     constraint IER_cst_EMSI {
+        EMSI.value == 'h1;
     }
     constraint IER_cst_PTIME {
+        PTIME.value == 'h1;
     }
     function new(string name = "DW_apb_uart_IER");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -137,8 +142,10 @@ class ral_reg_DW_apb_uart_IIR extends uvm_reg;
     uvm_reg_field IID;
     uvm_reg_field FIFOE;
     constraint IIR_cst_IID {
+        IID.value inside {'h1,'h2,'h4,'h6,'h7,'hC};
     }
     constraint IIR_cst_FIFOE {
+        FIFOE.value == 'h3;
     }
     function new(string name = "DW_apb_uart_IIR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -162,16 +169,20 @@ class ral_reg_DW_apb_uart_FCR extends uvm_reg;
     rand uvm_reg_field TET;
     rand uvm_reg_field RT;
     constraint FCR_cst_FIFOE {
+        FIFOE.value == 'h1;
     }
     constraint FCR_cst_RFR {
     }
     constraint FCR_cst_TFR {
     }
     constraint FCR_cst_DMAM {
+        DMAM.value == 'h1;
     }
     constraint FCR_cst_TET {
+        TET.value inside {'h1,'h2,'h3};
     }
     constraint FCR_cst_RT {
+        RT.value inside {'h1,'h2,'h3};
     }
     function new(string name = "DW_apb_uart_FCR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -204,18 +215,25 @@ class ral_reg_DW_apb_uart_LCR extends uvm_reg;
     rand uvm_reg_field BC;
     rand uvm_reg_field DLAB;
     constraint LCR_cst_DLS {
+        DLS.value inside {'h1,'h2,'h3};
     }
     constraint LCR_cst_STOP {
+        STOP.value == 'h1;
     }
     constraint LCR_cst_PEN {
+        PEN.value == 'h1;
     }
     constraint LCR_cst_EPS {
+        EPS.value == 'h1;
     }
     constraint LCR_cst_SP {
+        SP.value == 'h1;
     }
     constraint LCR_cst_BC {
+        BC.value == 'h1;
     }
     constraint LCR_cst_DLAB {
+        DLAB.value == 'h1;
     }
     function new(string name = "DW_apb_uart_LCR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -250,18 +268,25 @@ class ral_reg_DW_apb_uart_MCR extends uvm_reg;
     rand uvm_reg_field AFCE;
     rand uvm_reg_field SIRE;
     constraint MCR_cst_DTR {
+        DTR.value == 'h1;
     }
     constraint MCR_cst_RTS {
+        RTS.value == 'h1;
     }
     constraint MCR_cst_OUT1 {
+        OUT1.value == 'h1;
     }
     constraint MCR_cst_OUT2 {
+        OUT2.value == 'h1;
     }
     constraint MCR_cst_LPBCK {
+        LPBCK.value == 'h1;
     }
     constraint MCR_cst_AFCE {
+        AFCE.value == 'h1;
     }
     constraint MCR_cst_SIRE {
+        SIRE.value == 'h1;
     }
     function new(string name = "DW_apb_uart_MCR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -448,6 +473,7 @@ endclass : ral_reg_DW_apb_uart_STHR
 class ral_reg_DW_apb_uart_FAR extends uvm_reg;
     rand uvm_reg_field FAR;
     constraint FAR_cst_FAR {
+        FAR.value == 'h1;
     }
     function new(string name = "DW_apb_uart_FAR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -486,8 +512,10 @@ class ral_reg_DW_apb_uart_RFW extends uvm_reg;
         RFWD.value inside { ['h00:'hFF] };
     }
     constraint RFW_cst_RFPE {
+        RFPE.value == 'h1;
     }
     constraint RFW_cst_RFFE {
+        RFFE.value == 'h1;
     }
     function new(string name = "DW_apb_uart_RFW");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -599,6 +627,7 @@ endclass : ral_reg_DW_apb_uart_SRR
 class ral_reg_DW_apb_uart_SRTS extends uvm_reg;
     rand uvm_reg_field SRTS;
     constraint SRTS_cst_SRTS {
+        SRTS.value == 'h1;
     }
     function new(string name = "DW_apb_uart_SRTS");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -615,6 +644,7 @@ endclass : ral_reg_DW_apb_uart_SRTS
 class ral_reg_DW_apb_uart_SBCR extends uvm_reg;
     rand uvm_reg_field SBCB;
     constraint SBCR_cst_SBCB {
+        SBCB.value == 'h1;
     }
     function new(string name = "DW_apb_uart_SBCR");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -631,6 +661,7 @@ endclass : ral_reg_DW_apb_uart_SBCR
 class ral_reg_DW_apb_uart_SDMAM extends uvm_reg;
     rand uvm_reg_field SDMAM;
     constraint SDMAM_cst_SDMAM {
+        SDMAM.value == 'h1;
     }
     function new(string name = "DW_apb_uart_SDMAM");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -647,6 +678,7 @@ endclass : ral_reg_DW_apb_uart_SDMAM
 class ral_reg_DW_apb_uart_SFE extends uvm_reg;
     rand uvm_reg_field SFE;
     constraint SFE_cst_SFE {
+        SFE.value == 'h1;
     }
     function new(string name = "DW_apb_uart_SFE");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -663,6 +695,7 @@ endclass : ral_reg_DW_apb_uart_SFE
 class ral_reg_DW_apb_uart_SRT extends uvm_reg;
     rand uvm_reg_field SRT;
     constraint SRT_cst_SRT {
+        SRT.value inside {'h1,'h2,'h3};
     }
     function new(string name = "DW_apb_uart_SRT");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -679,6 +712,7 @@ endclass : ral_reg_DW_apb_uart_SRT
 class ral_reg_DW_apb_uart_STET extends uvm_reg;
     rand uvm_reg_field STET;
     constraint STET_cst_STET {
+        STET.value inside {'h1,'h2,'h3};
     }
     function new(string name = "DW_apb_uart_STET");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));
@@ -747,6 +781,7 @@ endclass : ral_regfile_DW_apb_uart_SHADOW
 class ral_reg_DW_apb_uart_HTX extends uvm_reg;
     rand uvm_reg_field HTX;
     constraint HTX_cst_HTX {
+        HTX.value == 'h1;
     }
     function new(string name = "DW_apb_uart_HTX");
         super.new(name, 32,build_coverage(UVM_NO_COVERAGE));

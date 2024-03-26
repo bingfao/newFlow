@@ -7,7 +7,7 @@
  #           - Including peripheral's registers declarations and bits
  #             definition
  # @version 0.1 
- # @date    24-01-19
+ # @date    24-03-21
  # <h2><center>&copy; Copyright (c)2024 CIP United Co.
 
  # All rights reserved.</center></h2>
@@ -22,6 +22,7 @@ block CRU {
             reset 0x1;
             access ro;
             constraint c_st_CCR_XTALON {
+                value == 'h1;
             };
         };  #Crystal oscillator ON/OFF, default ON, softwate can't turn it off. When CSWS=0/7, it can't be off
         field XTALRDY  @17 {
@@ -29,6 +30,7 @@ block CRU {
             reset 0x1;
             access ro;
             constraint c_st_CCR_XTALRDY {
+                value == 'h1;
             };
         };  #Crystal oscillator ready status, it equals 0 when reset assert, it equals 1 after oscillator is stable.
     }; # Clock control register
@@ -39,6 +41,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_SCCR_CSW {
+                value inside {'h1,'h2,'h3,'h4,'h5,'h6,'h7};
             };
         };  #System clock switch
         field CSWE  @3 {
@@ -53,6 +56,7 @@ block CRU {
             reset 0x0;
             access ro;
             constraint c_st_SCCR_CSWS {
+                value inside {'h1,'h2,'h3,'h4,'h5,'h6,'h7};
             };
         };  #System clock switch status
         field SCPRE  @8 {
@@ -78,6 +82,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1BCCR_PCK1PRE {
+                value inside {'h1,'h2,'h3};
             };
         };  #PCK1 prescaler
         field PCK1PWE  @2 {
@@ -92,6 +97,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1BCCR_PCK2PRE {
+                value inside {'h1,'h2,'h3};
             };
         };  #PCK2 prescaler
         field PCK2PWE  @6 {
@@ -106,6 +112,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1BCCR_D1BCPRE {
+                value inside {'h1,'h2,'h3};
             };
         };  #Domain1 bus clock prescaler
         field D1BCPWE  @10 {
@@ -123,6 +130,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2BCCR_PCK3PRE {
+                value inside {'h1,'h2,'h3};
             };
         };  #PCK3 prescaler
         field PCK3PWE  @2 {
@@ -137,6 +145,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2BCCR_D2BCPRE {
+                value inside {'h1,'h2,'h3};
             };
         };  #Domain2 bus clock prescaler
         field D2BCPWE  @10 {
@@ -154,6 +163,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_PLLMCR_PLLMON {
+                value == 'h0;
             };
         };  #PLL ON/OFF control, default 0 = OFF after reset, softwate writing 1 can turn it ON, when CSWS=1-5, it can't be off, #PLLM.PDn
         field PLLMRDY  @1 {
@@ -168,6 +178,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_PLLMCR_PLLBYP {
+                value == 'h0;
             };
         };  #PLL bypass. When it equal 0, system clock will be crystal oscillator, otherwise system clock will be PLL post clock, #PLLM.LOCK&PLLM_STB
         field PLLMD  @4 {
@@ -175,6 +186,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_PLLMCR_PLLMD {
+                value == 'h0;
             };
         };  #PLL mode select. 0 = Fractional mode, 1 = Integer mode, it is only writen when PLLON(bit[0]) = 0, #PLLM.DSMPD
         field PLLPSTPD  @5 {
@@ -182,6 +194,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_PLLMCR_PLLPSTPD {
+                value == 'h0;
             };
         };  #Enable PLL phase clock generator. 0 = disable, 1= enalbe, #PLLM.FOUTPOSTDIVPDn
         field PLLFO4PD  @6 {
@@ -189,6 +202,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_PLLMCR_PLLFO4PD {
+                value == 'h0;
             };
         };  #Enable PLL phase clock4 generator. 0 = disable, 1= enalbe, #PLLM.FOUT4POSTDIVPDn
         field RFDIV  @8 {
@@ -242,6 +256,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1HFCCR_QSPI1PRE {
+                value inside {'h1,'h2,'h3};
             };
         };  #QSPI1 function clock source prescaler
         field U1PHYPRE  @4 {
@@ -260,6 +275,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1HFCSR_QSPI1CS {
+                value == 'h1;
             };
         };  #QSPI1 function clock source selection
         field U1PHYCS  @4 {
@@ -267,6 +283,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1HFCSR_U1PHYCS {
+                value inside {'h1,'h2,'h3};
             };
         };  #USB1 PHY clock source selection
     }; # Domain1 AHB peripheral function clock selection register
@@ -277,6 +294,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2HFCCR_QSPI0PRE {
+                value inside {'h1,'h2,'h3};
             };
         };  #QSPI0 function clock source prescaler
         field U0PHYPRE  @4 {
@@ -295,6 +313,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2HFCSR_QSPI0CS {
+                value == 'h1;
             };
         };  #QSPI0 function clock source selection
         field U0PHYCS  @4 {
@@ -302,6 +321,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2HFCSR_U0PHYCS {
+                value inside {'h1,'h2,'h3};
             };
         };  #USB0 PHY clock source selection
     }; # Domain2 AHB peripheral function clock selection register
@@ -323,6 +343,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PFCSR_I2C0CS {
+                value inside {'h1,'h2};
             };
         };  #I2C0 function clock source selection
         field I2C1CS  @2 {
@@ -330,6 +351,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PFCSR_I2C1CS {
+                value inside {'h1,'h2};
             };
         };  #I2C1 function clock source selection
         field UART1CS  @18 {
@@ -337,6 +359,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PFCSR_UART1CS {
+                value inside {'h1,'h2,'h3};
             };
         };  #UART1 function clock source selection
         field UART2CS  @20 {
@@ -344,6 +367,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PFCSR_UART2CS {
+                value inside {'h1,'h2,'h3};
             };
         };  #UART2 function clock source selection
         field SPI0CS  @24 {
@@ -351,6 +375,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PFCSR_SPI0CS {
+                value inside {'h1,'h2};
             };
         };  #SPI0 function clock source selection
         field SPI1CS  @26 {
@@ -358,6 +383,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PFCSR_SPI1CS {
+                value inside {'h1,'h2};
             };
         };  #SPI1 function clock source selection
         field WDT1CS  @30 {
@@ -365,6 +391,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PFCSR_WDT1CS {
+                value inside {'h1,'h2};
             };
         };  #WDT1 function clock source selection
     }; # Domain1 APB peripheral function clock selection register
@@ -418,6 +445,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PFCSR_UART0CS {
+                value inside {'h1,'h2,'h3};
             };
         };  #UART0 function clock source selection
         field I2S0CS  @16 {
@@ -425,6 +453,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PFCSR_I2S0CS {
+                value inside {'h1,'h2};
             };
         };  #I2S0 function clock source selection
         field I2S1CS  @18 {
@@ -432,6 +461,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PFCSR_I2S1CS {
+                value inside {'h1,'h2};
             };
         };  #I2S1 function clock source selection
         field PDMCS  @24 {
@@ -439,6 +469,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PFCSR_PDMCS {
+                value inside {'h1,'h2};
             };
         };  #PDM function clock source selection
         field ADCCS  @28 {
@@ -446,6 +477,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PFCSR_ADCCS {
+                value inside {'h1,'h2};
             };
         };  #ADC function clock source selection
         field WDT0CS  @30 {
@@ -453,6 +485,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PFCSR_WDT0CS {
+                value inside {'h1,'h2};
             };
         };  #WDT0 function clock source selection
     }; # Domain2 APB peripheral function clock selection register
@@ -463,6 +496,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_COCR_CO1S {
+                value inside {'h1,'h2,'h3,'h4,'h5,'h6,'h7};
             };
         };  #CLKO1 clock select
         field CO1DIV  @4 {
@@ -470,6 +504,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_COCR_CO1DIV {
+                value inside {'h1,'h2,'h3,'h4,'h5,'h6,'h7};
             };
         };  #CLKO1 clock divider
         field CO1DWE  @7 {
@@ -484,6 +519,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_COCR_CO2S {
+                value inside {'h1,'h2,'h3,'h4};
             };
         };  #CLKO2 clock select
         field CO2DIV  @12 {
@@ -491,6 +527,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_COCR_CO2DIV {
+                value inside {'h1,'h2,'h3,'h4,'h5,'h6,'h7};
             };
         };  #CLKO2 clock divider
         field CO2DWE  @15 {
@@ -525,6 +562,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_RTCCR_XTAL32ON {
+                value == 'h1;
             };
         };  #Crystal XTAL32 ON/OFF, default OFF, softwate can turn it on/off. When CSWS=6 or RTC hase been enabled, it can't be off
         field XTAL32RDY  @1 {
@@ -546,6 +584,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_RTCCR_RTCEN {
+                value == 'h1;
             };
         };  #RTC clock enable
         field RTCCS  @13 {
@@ -553,6 +592,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_RTCCR_RTCCS {
+                value == 'h1;
             };
         };  #RTC clock source selection
     }; # RTC control register
@@ -563,6 +603,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_XPRSTR_NPURST {
+                value == 'h1;
             };
         };  #NPU block reset
     }; # Domain1 AXI peripheral reset register
@@ -573,6 +614,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_H1PRSTR_DMA0RST {
+                value == 'h1;
             };
         };  #DMA0 block reset
         field QSPI1RST  @10 {
@@ -580,6 +622,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_H1PRSTR_QSPI1RST {
+                value == 'h1;
             };
         };  #QSPI1 block reset
         field USB1RST  @14 {
@@ -587,6 +630,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_H1PRSTR_USB1RST {
+                value == 'h1;
             };
         };  #USB1 block reset
     }; 
@@ -597,6 +641,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_H2PRSTR_DMA2RST {
+                value == 'h1;
             };
         };  #DMA2 block reset
         field QSPI0RST  @9 {
@@ -604,6 +649,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_H2PRSTR_QSPI0RST {
+                value == 'h1;
             };
         };  #QSPI0 block reset
         field USB0RST  @13 {
@@ -611,6 +657,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_H2PRSTR_USB0RST {
+                value == 'h1;
             };
         };  #USB0 block reset
         field AESRST  @17 {
@@ -618,6 +665,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_H2PRSTR_AESRST {
+                value == 'h1;
             };
         };  #AES block reset
         field PKARST  @18 {
@@ -625,6 +673,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_H2PRSTR_PKARST {
+                value == 'h1;
             };
         };  #PKA block reset
         field SHARST  @19 {
@@ -632,6 +681,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_H2PRSTR_SHARST {
+                value == 'h1;
             };
         };  #SHA block reset
         field CRCRST  @24 {
@@ -639,6 +689,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_H2PRSTR_CRCRST {
+                value == 'h1;
             };
         };  #CRC block reset
     }; # Domain2 AHB peripheral reset register
@@ -649,6 +700,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PRSTR_I2C0RST {
+                value == 'h1;
             };
         };  #I2C0 block reset
         field I2C1RST  @1 {
@@ -656,6 +708,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PRSTR_I2C1RST {
+                value == 'h1;
             };
         };  #I2C1 block reset
         field UART1RST  @9 {
@@ -663,6 +716,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PRSTR_UART1RST {
+                value == 'h1;
             };
         };  #UART1 block reset
         field UART2RST  @10 {
@@ -670,6 +724,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PRSTR_UART2RST {
+                value == 'h1;
             };
         };  #UART2 block reset
         field SPI0RST  @16 {
@@ -677,6 +732,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PRSTR_SPI0RST {
+                value == 'h1;
             };
         };  #SPI0 block reset
         field SPI1RST  @17 {
@@ -684,6 +740,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PRSTR_SPI1RST {
+                value == 'h1;
             };
         };  #SPI1 block reset
         field WDT1RST  @31 {
@@ -691,6 +748,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PRSTR_WDT1RST {
+                value == 'h1;
             };
         };  #WDT1 block reset
     }; # Domain1 APB peripheral reset register
@@ -701,6 +759,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PRSTR_UART0RST {
+                value == 'h1;
             };
         };  #UART0 block reset
         field I2S0RST  @16 {
@@ -708,6 +767,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PRSTR_I2S0RST {
+                value == 'h1;
             };
         };  #I2S0 block reset
         field I2S1RST  @17 {
@@ -715,6 +775,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PRSTR_I2S1RST {
+                value == 'h1;
             };
         };  #I2S1 block reset
         field PDMRST  @20 {
@@ -722,6 +783,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PRSTR_PDMRST {
+                value == 'h1;
             };
         };  #PDM block reset
         field VADRST  @24 {
@@ -729,6 +791,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PRSTR_VADRST {
+                value == 'h1;
             };
         };  #VAD block reset
         field ADCRST  @25 {
@@ -736,6 +799,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PRSTR_ADCRST {
+                value == 'h1;
             };
         };  #ADC block reset
         field GPIORST  @26 {
@@ -743,6 +807,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PRSTR_GPIORST {
+                value == 'h1;
             };
         };  #GPIO block reset
         field FFTRST  @29 {
@@ -750,6 +815,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PRSTR_FFTRST {
+                value == 'h1;
             };
         };  #FFT block reset
         field WDT0RST  @30 {
@@ -757,6 +823,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PRSTR_WDT0RST {
+                value == 'h1;
             };
         };  #WDT0 block reset
     }; # Domain2 APB peripheral reset register
@@ -971,6 +1038,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_GRCR_WDG0RSC {
+                value == 'h1;
             };
         };  #WDG0 reset scope control
         field WDG1RSC  @1 {
@@ -978,6 +1046,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_GRCR_WDG1RSC {
+                value == 'h1;
             };
         };  #WDG1 reset scope control
     }; # Global reset control register
@@ -1111,6 +1180,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_SRSR_D1SRSTF {
+                value == 'h1;
             };
         };  #D1 domain software reset flag, Clear by software by writing 1
         field C1RSTF_1  @11 {
@@ -1149,6 +1219,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1XPCCR_NPUEN {
+                value == 'h1;
             };
         };  #NPU clock enable
     }; # Domain1 AXI peripheral clock control register
@@ -1159,6 +1230,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1HPCCR_DMA0EN {
+                value == 'h1;
             };
         };  #DMA0 clock enable
         field QSPI1EN  @10 {
@@ -1166,6 +1238,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1HPCCR_QSPI1EN {
+                value == 'h1;
             };
         };  #QSPI1 clock enable
         field USB1EN  @14 {
@@ -1173,6 +1246,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1HPCCR_USB1EN {
+                value == 'h1;
             };
         };  #USB1 (OTG_HS2) clock enable
     }; # Domain1 AHB peripheral clock control register
@@ -1183,6 +1257,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2HPCCR_DMA2EN {
+                value == 'h1;
             };
         };  #DMA2 clock enable
         field QSPI0EN  @9 {
@@ -1190,6 +1265,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2HPCCR_QSPI0EN {
+                value == 'h1;
             };
         };  #QSPI0 clock enable
         field USB0EN  @13 {
@@ -1197,6 +1273,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2HPCCR_USB0EN {
+                value == 'h1;
             };
         };  #USB0 clock enable
         field AESEN  @17 {
@@ -1204,6 +1281,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2HPCCR_AESEN {
+                value == 'h1;
             };
         };  #AES clock enable
         field PKAEN  @18 {
@@ -1211,6 +1289,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2HPCCR_PKAEN {
+                value == 'h1;
             };
         };  #PKA clock enable
         field SHAEN  @19 {
@@ -1218,6 +1297,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2HPCCR_SHAEN {
+                value == 'h1;
             };
         };  #SHA clock enable
         field CRCEN  @24 {
@@ -1225,6 +1305,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2HPCCR_CRCEN {
+                value == 'h1;
             };
         };  #CRC clock enable
     }; # Domain2 AHB peripheral clock control register
@@ -1235,6 +1316,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PPCCR_I2C0EN {
+                value == 'h1;
             };
         };  #I2C0 clock enable
         field I2C1EN  @1 {
@@ -1242,6 +1324,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PPCCR_I2C1EN {
+                value == 'h1;
             };
         };  #I2C1 clock enable
         field UART1ENT  @9 {
@@ -1249,6 +1332,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PPCCR_UART1ENT {
+                value == 'h1;
             };
         };  #UART1 clock enable
         field UART2EN  @10 {
@@ -1256,6 +1340,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PPCCR_UART2EN {
+                value == 'h1;
             };
         };  #UART2 clock enable
         field SPI0EN  @16 {
@@ -1263,6 +1348,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PPCCR_SPI0EN {
+                value == 'h1;
             };
         };  #SPI0 clock enable
         field SPI1EN  @17 {
@@ -1270,6 +1356,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PPCCR_SPI1EN {
+                value == 'h1;
             };
         };  #SPI1 clock enable
         field WDT1EN  @31 {
@@ -1277,6 +1364,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D1PPCCR_WDT1EN {
+                value == 'h1;
             };
         };  #WDT1 clock enable
     }; # Domain1 APB peripheral clock control register
@@ -1287,6 +1375,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PPCCR_UART0EN {
+                value == 'h1;
             };
         };  #UART0 clock enable
         field I2S0EN  @16 {
@@ -1294,6 +1383,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PPCCR_I2S0EN {
+                value == 'h1;
             };
         };  #I2S0 clock enable
         field I2S1EN  @17 {
@@ -1301,6 +1391,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PPCCR_I2S1EN {
+                value == 'h1;
             };
         };  #I2S1 clock enable
         field PDMEN  @20 {
@@ -1308,6 +1399,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PPCCR_PDMEN {
+                value == 'h1;
             };
         };  #PDM clock enable
         field VADEN  @23 {
@@ -1329,6 +1421,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PPCCR_ADCEN {
+                value == 'h1;
             };
         };  #ADC clock enable
         field GPIOEN  @26 {
@@ -1336,6 +1429,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PPCCR_GPIOEN {
+                value == 'h1;
             };
         };  #GPIO clock enable
         field FFTEN  @29 {
@@ -1343,6 +1437,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PPCCR_FFTEN {
+                value == 'h1;
             };
         };  #FFT clock enable
         field WDT0EN  @30 {
@@ -1350,6 +1445,7 @@ block CRU {
             reset 0x0;
             access rw;
             constraint c_st_D2PPCCR_WDT0EN {
+                value == 'h1;
             };
         };  #WDT0 clock enable
     }; # Domain2 APB peripheral clock control register
