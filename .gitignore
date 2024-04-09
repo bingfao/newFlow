@@ -10,3 +10,6 @@
 /module_check
 test.*
 __pycache__/xlsFlowX.cpython-312.pyc
+uvm/*
+*.sv
+*.ralf

@@ -130,6 +130,14 @@ class St_Interrupt:
     def toJson(self): 
         return '{\n' + f'"name":"{self.name}","value": {self.value},"description": "{self.description}"' + '\n}'
 
+class St_UnReadableMem:
+    def __init__(self, start,end) -> None:
+        self.start=start
+        self.end=end
+        pass
+
+    def toJson(self): 
+        return '{\n' + f'"start": "{self.start}","end": "{self.end}"' + '\n}'
 
 class St_AddressBlock:
     def __init__(self, offset):
@@ -313,14 +321,22 @@ class St_Cluster:
 
     def get_inst_str(self):
         inst_str = 'Cluster:\n'
-        inst_str += f'name:{self.name},dim:{self.dim},dimIncr:{self.dimIncrement},desc:{self.description},addrOffser:{
+        inst_str += f'name:{self.name},dim:{self.dim},dimIncr:{self.dimIncrement},desc:{self.description},addrOffset:{
             self.addressOffset},alter:{self.alternateCluster},alterGroupName:{self.alternateGroupName},cStructName:{self.headerStructName}\n'
         for e in self.clusters:
             inst_str += '\t'+e.get_inst_str()+'\n'
         return inst_str
     
     def toJson(self):
-        json_str = '{\n' f'"name": "{self.name}","dim": {self.dim},"dimIncrement": {self.dimIncrement}, "dimName": "{self.dimName}","description": "{self.description}","headerStructName": "{self.headerStructName}"'
+        dimInc = self.dimIncrement
+        if isinstance(dimInc,str):
+            if isHexString(dimInc):
+                dimInc = int(dimInc,16)
+                pass
+            else:
+                dimInc = int(dimInc,10)
+                pass
+        json_str = '{\n' f'"name": "{self.name}","addressOffset":"{self.addressOffset}","dim": {self.dim},"dimIncrement": {dimInc}, "dimName": "{self.dimName}","description": "{self.description}","headerStructName": "{self.headerStructName}"'
         json_str += f',"alternateCluster": "{self.alternateCluster}","alternateGroupName": "{self.alternateGroupName}"'
         if self.clusters:
             clu_lst = []
@@ -387,6 +403,7 @@ class St_Peripheral:
         self.memoryRemap = False
         self.powerDomain = ''
         self.systemDomain = ''
+        self.memUnReadableRanges =[]
 
     def get_inst_str(self):
         inst_str = 'Peripheral: \n'
@@ -453,6 +470,19 @@ class St_Peripheral:
                 bNotFirst = True
                 pass
             json_str += '\n]'
+            pass
+        if self.memUnReadableRanges:
+            json_str += ',"memoryContinueReadable": false\n'
+            json_str += ',"memUnReadableRanges": [\n'
+            bNotFirst = False
+            for a in self.memUnReadableRanges:
+                if bNotFirst:
+                    json_str += ','
+                json_str += a.toJson()
+                bNotFirst = True
+                pass
+            json_str += '\n]'
+            pass
         if self.interrupts:
             json_str += ',"interupts": [\n'
             bNotFirst = False
@@ -663,7 +693,7 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
     nRows = ws.max_row
     maxCols = ws.max_column
 
-    flag_names = ('addressBlocks:', 'interrupts:',
+    flag_names = ('addressBlocks:','unReadableAddrs:', 'interrupts:',
                   'cluster:', 'end cluster', 'register:')
     flag_dict = {}
     flag_rows = []
@@ -872,6 +902,40 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
                     addrb_lst.append(st_addrb)
                 row += 1
             addrb_dict[a_i] = addrb_lst
+            pass
+        pass
+
+    unRdaddr_lst = []
+    if 'unReadableAddrs:' in flag_dict.keys():
+        unReadableaddrs_flag_lst = flag_dict['unReadableAddrs:']
+        if unReadableaddrs_flag_lst:
+            
+            for a_i in unReadableaddrs_flag_lst:  
+                row_end = nRows
+                f_i = flag_rows.index(a_i)
+                if f_i < flags_count-1:
+                    row_end = flag_rows[f_i+1] - 1
+                # 读取addrblocks
+                #先读出的各列对应的字段
+                row_addr_header =a_i+1
+                unaddr_col_dict = {}
+                for col_i in range(1,maxCols):
+                    val = ws.cell(row_addr_header,col_i).value
+                    if val:
+                        unaddr_col_dict[val] = col_i
+                # print(addrb_col_dict)
+                row = a_i+2
+                while row <= row_end:
+                    if row not in emptyA_rows:
+                        offset_start = ws.cell(row, unaddr_col_dict['offset_start']).value
+                        offset_end = ws.cell(row, unaddr_col_dict['offset_end']).value
+                        desc = ws.cell(row, unaddr_col_dict['desc']).value
+                        st_unRaddr = St_UnReadableMem(offset_start,offset_end)
+                        unRdaddr_lst.append(st_unRaddr)
+                    row += 1
+                pass
+            pass
+        pass
 
     interrupts_flag_lst = flag_dict['interrupts:']
     interu_dict = {}
@@ -917,6 +981,8 @@ def checkModuleSheetValue(ws:worksheet, sheetName:str):  # 传入worksheet
                     p.addressBlocks = addrb_dict[p.addrBlocksRowindex]
                 if p.interuptsRowindex in interu_dict:
                     p.interrupts = interu_dict[p.interuptsRowindex]
+                if unRdaddr_lst:
+                    p.memUnReadableRanges = unRdaddr_lst
                 # print(p.get_inst_str())
     st_clu_reg_list = []
     clu_range_list = []
@@ -1106,6 +1172,9 @@ def readRegister(ws:worksheet,sheetName:str, row_end:int, row_start:int, parent_
                         cur_st_reg.dimName = dimName
                     desc = ws.cell(row, reg_col_dict['description']).value
                     if desc:
+                        if '\n' in desc:
+                            desc = desc.replace('\n',' ')
+                            pass
                         cur_st_reg.description = desc
                     hdl_path = ws.cell(row, reg_col_dict['pathHDL']).value
                     if hdl_path:
@@ -1148,12 +1217,12 @@ def readRegister(ws:worksheet,sheetName:str, row_end:int, row_start:int, parent_
                     end, op, start = bitrange.partition(':')
                     start_bit = start[0:-1]
                     end_bit = end[1:]
-                    if end_bit < start_bit:
+                    offset = nStart_bit = int(start_bit)
+                    nEnd_bit = int(end_bit)
+                    if nEnd_bit < nStart_bit:
                         print(f'Error In excel_file Sheet:{sheetName} Register Field bitRange value,Should be [EndBit:StartBit] and EndBit must > StartBit at Row {row}')
                         bError = True
                         pass
-                    offset = nStart_bit = int(start_bit)
-                    nEnd_bit = int(end_bit)
                     bitWidth = nEnd_bit - nStart_bit+1
                     access = ws.cell(row, regFd_col_dict['access']).value
                     if access not in fieldRWOp_arrUpper:
@@ -1164,9 +1233,12 @@ def readRegister(ws:worksheet,sheetName:str, row_end:int, row_start:int, parent_
                     writeConstraint = ws.cell(row, regFd_col_dict['writeConstraint']).value
                     range_min = ws.cell(row, regFd_col_dict['minimum']).value
                     range_max = ws.cell(row, regFd_col_dict['maximum']).value
-                    enumName = ws.cell(row, regFd_col_dict['enumName']).value
+                    enumName = ws.cell(row, regFd_col_dict['enumValueName']).value
                     enumVal = ws.cell(row, regFd_col_dict['enumValue']).value
                     enumDesc = ws.cell(row, regFd_col_dict['enumDescription']).value
+                    if isinstance(enumDesc,str) and '\n' in enumDesc:
+                        enumDesc = enumDesc.replace('\n',' ')
+                        pass
                     desc = ws.cell(row, regFd_col_dict['description']).value
                     hdl_path =ws.cell(row,regFd_col_dict['pathHDL']).value
                     fd.bitOffset = offset
@@ -1183,8 +1255,11 @@ def readRegister(ws:worksheet,sheetName:str, row_end:int, row_start:int, parent_
                     if hdl_path:
                         fd.hdl_path = hdl_path
                     if desc:
+                        if '\n' in desc:
+                            desc = desc.replace('\n',' ')
+                            pass
                         fd.description = desc
-                    if enumName and enumVal:
+                    if enumName and enumVal !=None:
                         enum_item = St_Enum_Val(enumName, enumVal)
                         if enumDesc:
                             enum_item.desc = enumDesc
@@ -1222,21 +1297,31 @@ def readRegister(ws:worksheet,sheetName:str, row_end:int, row_start:int, parent_
                         cur_reg_fd.enumHeaderName = enmuHeaderNm
                     enumName = ws.cell(row, regFd_col_dict['enumValueName']).value
                     enumVal = ws.cell(row, regFd_col_dict['enumValue']).value
-                    if isHexString(enumVal):
+                    bitMask = bitWidMask_arr[fd.bitWidth-1]
+                    #nBitMask = int(bitMask[2:],16)
+                    nBitMask = int(bitMask,16)
+                    if isinstance(enumVal,int):
+                        if enumVal >  nBitMask:
+                            print(f'Error In excel_file Sheet:{sheetName} Register Field enum value extends the bitRange at  Row {row}')
+                            bError = True
+                            pass
+                        pass
+                    elif isinstance(enumVal,str) and isHexString(enumVal):
                         #nEnumVal = int(enumVal[2:],16)
                         nEnumVal = int(enumVal,16)
-                        bitMask = bitWidMask_arr[fd.bitWidth-1]
-                        #nBitMask = int(bitMask[2:],16)
-                        nBitMask = int(bitMask,16)
                         if nEnumVal >  nBitMask:
                             print(f'Error In excel_file Sheet:{sheetName} Register Field enum value extends the bitRange at  Row {row}')
                             bError = True
                             pass
                     enumDesc = ws.cell(row, regFd_col_dict['enumDescription']).value
-                    if enumName and enumVal:
+                    if enumName and enumVal != None:
                         enum_item = St_Enum_Val(enumName, enumVal)
-                        if enumDesc:
+                        if isinstance(enumDesc,str) :
+                            if'\n' in enumDesc:
+                                enumDesc = enumDesc.replace('\n',' ')
+                                pass          
                             enum_item.desc = enumDesc
+                            pass
                         cur_reg_fd.enumValues.append(enum_item)
 
         row += 1
@@ -1309,6 +1394,9 @@ def readCluster(ws: worksheet,sheetName:str, parent_clu_reg_list:list, clu_range
                     st_clu.dimIncrement = dimIncrement
                 description = ws.cell(row, cluster_col_dict['description']).value
                 if description:
+                    if '\n' in description:
+                        description = description.replace('\n',' ')
+                        pass
                     st_clu.description = description
                 if parent_clu_reg_list:
                     i = 0
@@ -4089,5 +4177,5 @@ if __name__ == '__main__':
     # 全路径是为方便在vscode中进行调试
     # file_name = 'D:/workspace/demopy/excel_flow/excel/ahb_cfg_20230925.xlsx'
     # file_name = './xy2_mp32daptyxx_DDF 240118.xlsx'
-    file_name = './H1_mp32daptyxx_DDF 240321.xlsx'
+    file_name = './H1_mp32daptyxx_DDF 240408.xlsx'
     dealwith_excel(file_name)

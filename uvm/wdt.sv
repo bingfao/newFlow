@@ -8,7 +8,7 @@
  #           - Including peripheral's registers declarations and bits
  *             definition
  # @version 0.1 
- # @date    24-03-22
+ # @date    24-04-09
 
  *
  ******************************************************************************
